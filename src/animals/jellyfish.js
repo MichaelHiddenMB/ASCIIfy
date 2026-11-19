@@ -112,6 +112,11 @@ export const jellyfish = {
   },
 };
 
+// How brightly a jelly is glowing right now (0 to 1), e.g. for a scene to add a halo.
+export function jellyGlow(j) {
+  return pulseGlow(j);
+}
+
 // The glow's surge on each pulse: quick to light as the bell snaps shut, then easing out.
 function pulseGlow(j) {
   const p = frac(j.phase / TAU);

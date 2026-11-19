@@ -17,6 +17,15 @@
 // to the water, and run up the beach when a wave rushes at them. Their footprints wash away
 // when the water runs over them.
 //
+// SUNSET (a setting). The sun sets over the sea, just off the right edge. Everything is tinted
+// warm and dims toward violet further from it (a color grade, see engine/sunset.js), the sea
+// takes dusky colors with a golden path of glints leading to the sun, and shadows stretch out
+// long toward the beach. As it gets dark, two things glow, painted over the finished frame
+// with the "lighter" blend mode (light adds to light), like the meadow's fireflies:
+//   - bioluminescent plankton: tiny blue-green sparks wherever the water is churned up (the
+//     breaking foam, the swash, and wherever the mouse stirs the sea), as real plankton does
+//   - the jellyfish, each shining softly, flaring up with every pulse
+//
 // Every animal, and every shell, casts a soft shadow away from the sun: sea creatures cast
 // theirs on the sea floor, further away the higher they swim, so they look like they're
 // floating above the reef.
@@ -26,11 +35,12 @@
 import { Flock } from '../engine/flock.js';
 import { Shore } from '../engine/shore.js';
 import { makeSunsetGrade } from '../engine/sunset.js';
-import { clamp, rand } from '../engine/math.js';
+import { clamp, hash3, rand } from '../engine/math.js';
+import { FONT_STACK } from '../engine/renderer.js';
 import { buildReef, drawReef } from './reef.js';
 import { drawShells, placeShells, stepShells } from './shells.js';
 import { crabs } from '../animals/crabs.js';
-import { jellyfish } from '../animals/jellyfish.js';
+import { jellyfish, jellyGlow } from '../animals/jellyfish.js';
 import { tropicalFish } from '../animals/tropical-fish.js';
 import { turtles } from '../animals/turtles.js';
 import { stingrays } from '../animals/stingrays.js';
@@ -144,6 +154,23 @@ export function createBeach({ density = 1, sunset = false } = {}) {
     for (const c of crabFlock.creatures) add(c.x, c.y, 8, c.span * 0.3, 0.35);
     for (const s of shells) add(s.x + s.ox, s.y + s.oy, 4, s.span * 0.36, 0.22 * (1 - s.wet * 0.6));
     return list;
+  }
+
+  // Soft round glows, drawn once and stamped wherever something glows.
+  const sprites = {};
+  function glowSprite(name, rgb, size) {
+    if (sprites[name]) return sprites[name];
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const g = c.getContext('2d');
+    const h = size / 2;
+    const grad = g.createRadialGradient(h, h, 0, h, h, h);
+    grad.addColorStop(0, `rgba(${rgb}, 0.55)`);
+    grad.addColorStop(0.35, `rgba(${rgb}, 0.18)`);
+    grad.addColorStop(1, `rgba(${rgb}, 0)`);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, size, size);
+    return (sprites[name] = c);
   }
 
   // Puts a sea creature somewhere in its stretch of open water.
@@ -291,6 +318,42 @@ export function createBeach({ density = 1, sunset = false } = {}) {
     setSunset(on) {
       sunset = on;
       shore.setSunset(on, SUN);
+    },
+
+    // At sunset: glowing plankton and jellyfish, painted over the finished frame so they glow.
+    overlay(ctx, r) {
+      if (!sunset || shore.cols !== r.cols) return;
+      const { cols, cw, ch } = r;
+      const t = crabFlock.time;
+      ctx.globalCompositeOperation = 'lighter';
+      // The jellyfish, each a soft magenta glow that flares as it pulses.
+      const halo = glowSprite('jelly', '255, 110, 220', 128);
+      for (const j of sea[0].flock.creatures) {
+        const size = j.span * 1.3;
+        ctx.globalAlpha = (0.3 + 0.6 * jellyGlow(j)) * (0.5 + 0.5 * j.depth);
+        ctx.drawImage(halo, j.x - size / 2, j.y - size / 2, size, size);
+      }
+      // Plankton: brief sparks where the water is churned up (foam, or rippling from the mouse).
+      const spark = glowSprite('plankton', '90, 255, 230', 40);
+      ctx.font = `600 ${Math.round(ch * 0.74)}px ${FONT_STACK}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const { foam, stir } = shore;
+      const tick = Math.floor(t * 8);
+      for (let i = 0; i < foam.length; i++) {
+        const churn = Math.min(1, foam[i] * 0.6 + stir[i] * 18);
+        if (churn < 0.12) continue;
+        const c = i % cols, row = (i / cols) | 0;
+        const h = hash3(c, row, tick);
+        if (h > churn * 0.3) continue;
+        const glow = 1 - h / (churn * 0.3); // brightest for a moment, then gone
+        const x = (c + 0.5) * cw, y = (row + 0.5) * ch;
+        ctx.globalAlpha = glow;
+        ctx.drawImage(spark, x - 20, y - 20, 40, 40);
+        ctx.fillStyle = `rgba(170, 255, 240, ${glow})`;
+        ctx.fillText(glow > 0.6 ? '*' : '.', x, y + 1);
+      }
+      ctx.globalAlpha = 1;
     },
 
     // The sunset's color grade (see engine/sunset.js), or nothing by day.
