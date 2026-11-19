@@ -9,6 +9,8 @@
   <link rel="icon" type="image/png" sizes="16x16" href="icons/newtab-tab-16.png">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/newtab-tab-32.png">
   <link rel="stylesheet" href="newtab.css">
+  <!-- Runs straight away (no "defer"), before the page is first shown: see src/boot.js. -->
+  <script src="src/boot.js"></script>
   <!-- type="module" lets our JavaScript files import each other without a build step. -->
   <script type="module" src="src/main.js"></script>
 </head>

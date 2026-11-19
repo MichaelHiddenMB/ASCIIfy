@@ -13,9 +13,14 @@ html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--bg);
   color: var(--text);
   font-family: var(--font);
+}
+
+/* Until the first frame is drawn, show the snapshot of the last one (set by src/boot.js),
+   so a new tab doesn't flash an empty screen. The canvas covers it once the scene starts. */
+html {
+  background: var(--snapshot, none) center / cover no-repeat, var(--bg);
 }
 
 #scene {

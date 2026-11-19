@@ -40,6 +40,26 @@ function buildScene() {
   renderer.use(scene.palette, scene.tuning, scene.ground);
   resize();
   renderer.render(scene, 0);
+  // Snapshot the new scene once it has settled a little, so a tab opened next starts on it.
+  clearTimeout(snapshotTimer);
+  snapshotTimer = setTimeout(saveSnapshot, 2000);
+}
+
+// Saves a small picture of the current frame for boot.js to show while the next new tab
+// starts up. It's shrunk and saved as a JPEG to keep it small (about 100 KB); it's only on
+// screen for a moment, so the softness doesn't show.
+let snapshotTimer = 0;
+function saveSnapshot() {
+  try {
+    const scale = Math.min(1, 960 / canvas.width);
+    const small = document.createElement('canvas');
+    small.width = Math.round(canvas.width * scale);
+    small.height = Math.round(canvas.height * scale);
+    small.getContext('2d').drawImage(canvas, 0, 0, small.width, small.height);
+    localStorage.setItem('asciify:snapshot', small.toDataURL('image/jpeg', 0.8));
+  } catch {
+    // Storage full or blocked: new tabs just start on the plain background.
+  }
 }
 
 const loop = createLoop({
@@ -87,6 +107,13 @@ window.addEventListener('pointerdown', (e) => {
 
 // Moving the mouse anywhere over the page drags through the water.
 window.addEventListener('pointermove', (e) => scene.pointer?.(e.clientX, e.clientY));
+
+// Snapshot the latest frame whenever this tab is left: switched away from, navigated
+// to a website, or closed.
+window.addEventListener('pagehide', saveSnapshot);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) saveSnapshot();
+});
 
 // Resize after the window stops changing size for a moment.
 let resizeTimer = 0;
