@@ -74,6 +74,10 @@ export class Shore {
     this.cols = 0;
     this.rows = 0;
     this.lastT = 0;
+    // The waves keep their own clock, which runs `waveSpeed` times as fast as real time. Changing
+    // the speed changes how fast it ticks from then on, so the waves never jump.
+    this.waveSpeed = 1;
+    this.waveTime = 0;
     this.amp = new Float32Array(6); // scratch: the strengths of the next few waves on one row
     this.shadows = []; // { x, y, radius, strength } in pixels, set by the scene each frame
     this.sea = DAY_SEA;
@@ -204,6 +208,7 @@ export class Shore {
     const T = this.period, L = this.wavelength, B = this.breakAt;
     const dt = clamp(t - this.lastT, 0, 0.25);
     this.lastT = t;
+    this.waveTime += dt * this.waveSpeed;
     const col = [0, 0, 0], tmp = [0, 0, 0];
     const seaW = this.seaWidth;
     const shade = this.shade;
@@ -226,7 +231,7 @@ export class Shore {
 
     for (let r = 0; r < rows; r++) {
       // Where this row is in the wave recipe: wave number k, and how far through it (p).
-      const tau = t / T + this.offset[r];
+      const tau = this.waveTime / T + this.offset[r];
       const k = Math.floor(tau);
       const p = tau - k;
       // Strengths of the wave that just broke (amp[0]) and the ones on their way in.

@@ -61,10 +61,11 @@ const FISH = 22;
 const TURTLES = 2;
 const RAYS = 2;
 
-export function createBeach({ density = 1, sunset = false } = {}) {
+export function createBeach({ density = 1, sunset = false, waves = 1 } = {}) {
   const tuning = { fog: 0.6, shimmer: 0.3, sparkle: 0.1, trail: 0, trailFade: 0.4, grid: 1 };
   const shore = new Shore();
   shore.setSunset(sunset, SUN);
+  shore.waveSpeed = waves;
   const sunsetGrade = makeSunsetGrade(SUN.x, SUN.y, [1, 0.82, 0.72]); // gentler than the meadow's, so the sea stays blue
   const water = shore.water;
   const crabTuning = { ...crabs.defaults };
@@ -313,6 +314,11 @@ export function createBeach({ density = 1, sunset = false } = {}) {
         }
       }
       lastPointer = { x, y, t: now };
+    },
+
+    // The "wave speed" slider: how fast the waves roll in and wash up the beach.
+    setWaves(speed) {
+      shore.waveSpeed = speed;
     },
 
     setSunset(on) {

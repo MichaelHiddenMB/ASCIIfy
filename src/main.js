@@ -33,6 +33,7 @@ function buildScene() {
     flowers: settings.flowers,
     pond: settings.meadowPond,
     sunset: sunsetFor(settings),
+    waves: settings.waves,
   });
   document.body.dataset.scene = settings.scene; // lets the stylesheet adjust to the theme
   scene.setLight?.(settings.light);
@@ -63,6 +64,7 @@ function applySettings(patch) {
     if (changed('pads')) scene.setPads?.(settings.pads);
     if (changed('flowers')) scene.setFlowers?.(settings.flowers);
     if (changed('sunset') || changed('beachSunset')) scene.setSunset?.(sunsetFor(settings));
+    if (changed('waves')) scene.setWaves?.(settings.waves);
   }
   if (changed('speed')) loop.setSpeed(settings.speed);
   clock.update(settings);

@@ -7,6 +7,7 @@ const FORMATS = {
   density: (v) => `${v}x`,
   pads: (v) => `${v}x`,
   flowers: (v) => `${v}x`,
+  waves: (v) => `${v}x`,
 };
 
 export function initSettings({ scenes, onChange }) {

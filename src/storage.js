@@ -14,6 +14,7 @@ export const DEFAULTS = {
   meadowPond: true, // the little pond with koi, and the tree beside it, in the meadow
   sunset: false, // sunset lighting and fireflies in the meadow
   beachSunset: false, // sunset over the sea at the beach
+  waves: 1, // how fast the beach's waves roll in
   name: '',
   showClock: true,
   showSearch: true,
