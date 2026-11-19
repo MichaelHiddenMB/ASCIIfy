@@ -46,7 +46,7 @@ click to feed the fish or startle the insects.
 
 ## Scenes
 
-### 🐟 Koi pond
+### Koi pond
 
 <img src="docs/media/koi-pond.webp" align="right" width="380" alt="Koi swimming in the pond as the mouse drags a wake through the water">
 
@@ -61,7 +61,7 @@ through them.
 
 <br clear="right">
 
-### 🦋 Meadow
+### Meadow
 
 <img src="docs/media/meadow.webp" align="right" width="380" alt="Butterflies and dragonflies over a windy meadow with a small pond and a tree">
 
@@ -76,7 +76,7 @@ across it in waves of light.
 
 <br clear="right">
 
-### 🐢 Beach
+### Beach
 
 <img src="docs/media/beach.webp" align="right" width="380" alt="Waves washing up a sandy beach beside a sea full of reef fish">
 
@@ -90,7 +90,7 @@ A narrow sandy beach beside a clear sea, with waves that break into foam and was
 
 <br clear="right">
 
-### 🌅 Sunset
+### Sunset
 
 The meadow and the beach each have a sunset setting: warm golden light, long shadows, and
 things that glow in the dark. Fireflies blink across the meadow, while at the beach plankton
