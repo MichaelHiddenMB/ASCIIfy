@@ -53,6 +53,12 @@ html, body {
   color: var(--text);
 }
 
+/* The beach is bright (sand and white foam), so the clock and greeting get a soft dark halo
+   to stay readable. */
+body[data-scene="beach"] #clock {
+  filter: drop-shadow(0 0 10px rgba(6, 22, 38, 0.5));
+}
+
 /* The greeting is the main line under the clock; the date is a quieter caption below it.
    Using size and brightness (not two competing colors) makes the order obvious. */
 #greeting {

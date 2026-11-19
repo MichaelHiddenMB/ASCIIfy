@@ -3,10 +3,12 @@
 // and register it here.
 import { createKoiPond } from './koi-pond.js';
 import { createMeadow } from './meadow.js';
+import { createBeach } from './beach.js';
 
 export const DEFAULT_SCENE = 'koi-pond';
 
 export const SCENES = {
   'koi-pond': { label: 'Koi pond', create: createKoiPond },
   meadow: { label: 'Meadow', create: createMeadow },
+  beach: { label: 'Beach', create: createBeach },
 };

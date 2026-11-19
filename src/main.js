@@ -30,6 +30,7 @@ function buildScene() {
     pond: settings.meadowPond,
     sunset: settings.sunset,
   });
+  document.body.dataset.scene = settings.scene; // lets the stylesheet adjust to the theme
   scene.setLight?.(settings.light);
   renderer.use(scene.palette, scene.tuning, scene.ground);
   resize();
