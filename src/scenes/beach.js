@@ -35,7 +35,7 @@
 import { Flock } from '../engine/flock.js';
 import { Shore } from '../engine/shore.js';
 import { makeSunsetGrade } from '../engine/sunset.js';
-import { clamp, hash3, rand } from '../engine/math.js';
+import { clamp, hash3, rand, smoothstep } from '../engine/math.js';
 import { FONT_STACK } from '../engine/renderer.js';
 import { buildReef, drawReef } from './reef.js';
 import { drawShells, placeShells, stepShells } from './shells.js';
@@ -156,6 +156,9 @@ export function createBeach({ density = 1, sunset = false, waves = 1 } = {}) {
     for (const s of shells) add(s.x + s.ox, s.y + s.oy, 4, s.span * 0.36, 0.22 * (1 - s.wet * 0.6));
     return list;
   }
+
+  // How churned each cell of sea has been lately, eased so the plankton glow doesn't jump.
+  let calm = new Float32Array(0);
 
   // Soft round glows, drawn once and stamped wherever something glows.
   const sprites = {};
@@ -339,23 +342,37 @@ export function createBeach({ density = 1, sunset = false, waves = 1 } = {}) {
         ctx.globalAlpha = (0.3 + 0.6 * jellyGlow(j)) * (0.5 + 0.5 * j.depth);
         ctx.drawImage(halo, j.x - size / 2, j.y - size / 2, size, size);
       }
-      // Plankton: brief sparks where the water is churned up (foam, or rippling from the mouse).
-      // Kept sparse and faint: only well-churned water sparks, and only now and then, so it
-      // twinkles along the waves rather than lighting the whole surf up.
+      // Plankton: sparks where the water is churned up (foam, or rippling from the mouse).
+      // Kept sparse and faint so it twinkles along the waves rather than lighting the surf up.
+      //
+      // Smooth twinkling: every cell of sea has its own little timer, like a lighthouse on
+      // a slow cycle, started at a random point so neighbours don't blink together. Each
+      // cycle a cell may or may not get a spark (a dice roll fixed for that cycle), and a
+      // spark fades in and back out over part of the cycle instead of popping on and off.
+      // How churned the water is only sets how bright a spark is, never whether it exists, so
+      // as a wave passes, its sparks brighten and dim with it rather than flickering. That
+      // brightness also eases toward the churn (a step of the way each frame) instead of
+      // jumping, since a breaking wave's front changes the foam under a cell very suddenly.
       const spark = glowSprite('plankton', '90, 255, 230', 40);
-      const RATE = 0.1; // how likely a churned cell is to spark at any moment
+      const CYCLE = 1.3; // seconds per twinkle cycle
+      const LIT = 0.4; // the part of each cycle a spark is glowing
+      const RATE = 0.1; // the chance a cell sparks in a given cycle
       ctx.font = `600 ${Math.round(ch * 0.74)}px ${FONT_STACK}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const { foam, stir } = shore;
-      const tick = Math.floor(t * 8);
+      if (calm.length !== foam.length) calm = new Float32Array(foam.length);
       for (let i = 0; i < foam.length; i++) {
         const churn = Math.min(1, foam[i] * 0.6 + stir[i] * 18);
-        if (churn < 0.25) continue;
+        calm[i] += (churn - calm[i]) * 0.12;
+        if (calm[i] < 0.2) continue;
         const c = i % cols, row = (i / cols) | 0;
-        const h = hash3(c, row, tick);
-        if (h > churn * RATE) continue;
-        const glow = 1 - h / (churn * RATE); // brightest for a moment, then gone
+        const phase = t / CYCLE + hash3(c, row, 7919); // this cell's own timer
+        const cycle = Math.floor(phase);
+        const u = (phase - cycle) / LIT; // 0 to 1 while the spark is lit
+        if (u >= 1 || hash3(c, row, cycle) > RATE) continue;
+        const glow = Math.sin(Math.PI * u) * smoothstep(0.2, 0.55, calm[i]); // fade in, then out
+        if (glow < 0.02) continue;
         const x = (c + 0.5) * cw, y = (row + 0.5) * ch;
         ctx.globalAlpha = glow * 0.45;
         ctx.drawImage(spark, x - 13, y - 13, 26, 26);
