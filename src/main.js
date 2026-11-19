@@ -28,6 +28,7 @@ function buildScene() {
     pads: settings.pads,
     flowers: settings.flowers,
     pond: settings.meadowPond,
+    sunset: settings.sunset,
   });
   scene.setLight?.(settings.light);
   renderer.use(scene.palette, scene.tuning, scene.ground);
@@ -56,6 +57,7 @@ function applySettings(patch) {
     if (changed('light')) scene.setLight?.(settings.light);
     if (changed('pads')) scene.setPads?.(settings.pads);
     if (changed('flowers')) scene.setFlowers?.(settings.flowers);
+    if (changed('sunset')) scene.setSunset?.(settings.sunset);
   }
   if (changed('speed')) loop.setSpeed(settings.speed);
   clock.update(settings);

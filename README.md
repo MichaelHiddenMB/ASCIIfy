@@ -33,14 +33,16 @@ click the reload icon on the extension's card in `chrome://extensions` first.
 - Blue morpho butterflies wander, flutter and glide, and now and then land on a flower to rest
   with their wings slowly opening and closing. Emerald dragonflies hover, then dart.
 - Every insect casts a soft shadow on the grass.
-- A big tree in the bottom-left corner, swaying in the breeze, with a little pond beside it:
-  a muddy shore, rippling water and a few koi. **Click** the water to feed them. Switch the pond
-  off with **little pond** in settings.
+- A little pond in the bottom-left corner, with a muddy shore, rippling water and a few koi,
+  and a big tree beside it that the insects fly under. **Click** the water to feed the koi.
+  Switch both off with **pond and tree** in settings.
+- **Sunset** (in settings): warm golden-hour light, long shadows, a dusky pond, and fireflies
+  blinking across the meadow.
 - **Your mouse is a wind stream.** Moving it sends a wide, short-lived stream of air along its
-  path, shown as pale wisps that curl and fade. Butterflies caught in it are dragged along and
-  tumble, dragonflies get pushed and may dart off downwind, resting butterflies are blown off
-  their flowers, the tree's leaves rustle, and seed fluff and petals float away on it. It also
-  brushes the grass and ripples the pond.
+  path, shown only as pale wisps that curl and fade. Butterflies caught in it are dragged along
+  and tumble, dragonflies get pushed and may dart off downwind, resting butterflies are blown off
+  their flowers, the tree's leaves rustle, fireflies drift with it, and seed fluff and petals
+  float away on it. It also ripples the pond.
 - **Click** the grass to puff it outward and startle everything nearby.
 
 Switch between themes, and set how many flowers or lily pads there are, in the settings panel.

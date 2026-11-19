@@ -79,7 +79,7 @@ export function drawTree(tree, pen) {
     }
     // The edge of each clump, where it sits over the one below, is a little darker.
     if (d > 0.85) { R *= 0.8; G *= 0.8; B *= 0.8; }
-    return ink(out, R, G, B, INK_SCALE, k > 0.9 ? '*%' : k > 0.6 ? '%&' : '&@8');
+    return ink(out, R, G, B, INK_SCALE, k > 0.6 ? '%&' : '&@8');
   }, { fog: 0 });
 }
 
