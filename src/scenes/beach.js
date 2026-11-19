@@ -68,13 +68,46 @@ export function createBeach({ density = 1 } = {}) {
   ];
   for (const kind of sea) kind.flock.keepIn = (c) => seaBounds(c, kind);
 
-  function seaBounds(c, { out, upTo }) {
+  // The near edge of a kind's stretch of sea (toward the beach) on this creature's row.
+  function seaEdge(c, { out }) {
+    return c.x - shore.distance(c.x, c.y) + Math.max(shore.breakAt * 1.8, shore.seaWidth * out);
+  }
+
+  // The gentle push back toward the middle of its stretch. It starts a little before the
+  // edge, so most creatures turn away before they ever touch it.
+  function seaBounds(c, kind) {
     const m = Math.max(50, c.span * 0.6);
     const base = c.x - shore.distance(c.x, c.y);
-    const left = base + Math.max(shore.breakAt * 1.8, shore.seaWidth * out), right = Math.min(size.w - m, base + shore.seaWidth * upTo);
+    const left = seaEdge(c, kind) + 70, right = Math.min(size.w - m, base + shore.seaWidth * kind.upTo);
     const ix = c.x < left ? (left - c.x) / 80 : c.x > right ? -(c.x - right) / m : 0;
     const iy = c.y < m ? (m - c.y) / m : c.y > size.h - m ? -(c.y - (size.h - m)) / m : 0;
     return { angle: Math.atan2(iy, ix), push: Math.min(1, Math.hypot(ix, iy)) };
+  }
+
+  // WALLS. If a creature does reach the edge of where it may go, it isn't moved anywhere:
+  // it's held at the edge, the part of its motion going into the edge is taken away, and its
+  // own direction is swung round to run along the edge, so it carries on sideways (like a
+  // ball rolling along a wall). The walls are the shore side of its stretch and the screen.
+  function slideAlong(c, wall, nx, ny) {
+    // (nx, ny) points away from the wall, back into the allowed area.
+    const into = c.vx * nx + c.vy * ny;
+    if (into < 0) {
+      c.vx -= into * nx;
+      c.vy -= into * ny;
+    }
+    // Along the wall, whichever way it was already more heading, tipped slightly away from it.
+    const ax = -ny, ay = nx;
+    const sign = Math.cos(c.heading) * ax + Math.sin(c.heading) * ay >= 0 ? 1 : -1;
+    const along = Math.atan2(ay * sign + ny * 0.25, ax * sign + nx * 0.25);
+    if ('walk' in c) c.walk = along; // crabs
+    if ('drift' in c) c.drift = along; // everything in the sea
+    if (c.fleeDir !== undefined) c.fleeDir = along;
+  }
+  function holdIn(c, left, right, top, bottom) {
+    if (c.x < left) { c.x = left; slideAlong(c, left, 1, 0); }
+    if (c.x > right) { c.x = right; slideAlong(c, right, -1, 0); }
+    if (c.y < top) { c.y = top; slideAlong(c, top, 0, 1); }
+    if (c.y > bottom) { c.y = bottom; slideAlong(c, bottom, 0, -1); }
   }
 
   // Puts a sea creature somewhere in its stretch of open water.
@@ -83,6 +116,7 @@ export function createBeach({ density = 1 } = {}) {
     const base = size.w - shore.seaWidth;
     c.x = rand(base + shore.seaWidth * kind.out + 40, Math.min(size.w - 60, base + shore.seaWidth * kind.upTo - 20));
     c.drift = rand(0, Math.PI * 2);
+    c.placed = true;
     kind.animal.enter?.(c, kind.flock);
   }
 
@@ -91,7 +125,7 @@ export function createBeach({ density = 1 } = {}) {
   crabFlock.keepIn = (c) => {
     const m = 50;
     const base = c.x - shore.distance(c.x, c.y); // the average waterline on this crab's row
-    const right = base - 20, left = Math.max(m, base - Math.max(260, shore.runup * 4));
+    const right = base - 45, left = Math.max(m, base - Math.max(260, shore.runup * 4));
     const ix = c.x < left ? (left - c.x) / 60 : c.x > right ? -(c.x - right) / 60 : 0;
     const iy = c.y < m ? (m - c.y) / m : c.y > size.h - m ? -(c.y - (size.h - m)) / m : 0;
     return { angle: Math.atan2(iy, ix), push: Math.min(1, Math.hypot(ix, iy)) };
@@ -101,7 +135,8 @@ export function createBeach({ density = 1 } = {}) {
   function placeOnBeach(c) {
     c.y = rand(60, size.h - 60);
     const base = c.x - shore.distance(c.x, c.y) || size.w * 0.2;
-    c.x = base - rand(30, Math.max(120, shore.runup * 3));
+    c.x = Math.max(40, base - rand(30, Math.max(120, shore.runup * 3)));
+    c.placed = true;
     crabs.enter(c, crabFlock);
   }
 
@@ -117,7 +152,9 @@ export function createBeach({ density = 1 } = {}) {
       shore.resize(Math.ceil(w / cw), Math.ceil(h / ch), cw, ch);
       shore.reef = buildReef(shore);
       shells = placeShells(shore, w, h);
-      sea[1].flock.anemones = shore.reef.anemones;
+      // Clownfish only take anemones they're allowed to swim to (not in the shallows by the surf).
+      const fishEdge = Math.max(shore.breakAt * 1.8, shore.seaWidth * sea[1].out) + 25;
+      sea[1].flock.anemones = shore.reef.anemones.filter((a) => shore.distance(a.x, a.y) > fishEdge);
       crabFlock.resize(w, h);
       for (const c of crabFlock.creatures) placeOnBeach(c);
       for (const kind of sea) {
@@ -130,8 +167,11 @@ export function createBeach({ density = 1 } = {}) {
       crabFlock.step(dt);
       crabFlock.events.length = 0;
       for (const c of crabFlock.creatures) {
-        // A newcomer (or a crab that's somehow got lost) starts out on the beach.
-        if (c.y < -40 || c.y > size.h + 40 || c.x < -40 || shore.distance(c.x, c.y) > 40) placeOnBeach(c);
+        // A newcomer starts out on the beach; after that, the beach's edges are walls.
+        if (!c.placed) placeOnBeach(c);
+        const base = c.x - shore.distance(c.x, c.y);
+        const m = c.span * 0.3;
+        holdIn(c, m, base - 12, m, size.h - m);
         // A wave rushing up the sand toward it: run up the beach.
         const gap = c.x - shore.waterline(c.y); // how far the water is from the crab (negative = still seaward)
         if (crabFlock.time > c.startledUntil && shore.waveRushing(c.y) && gap > -45) {
@@ -141,9 +181,11 @@ export function createBeach({ density = 1 } = {}) {
       for (const kind of sea) {
         kind.flock.step(dt);
         kind.flock.events.length = 0;
-        // Newcomers (and any that got lost) start out in open water.
+        // Newcomers start out in open water; after that, the edges of their stretch are walls.
         for (const c of kind.flock.creatures) {
-          if (c.y < -c.span || c.y > size.h + c.span || c.x > size.w + c.span || shore.distance(c.x, c.y) < 0) placeInSea(c, kind);
+          if (!c.placed) placeInSea(c, kind);
+          const m = c.span * 0.2;
+          holdIn(c, seaEdge(c, kind), size.w - m, m, size.h - m);
           // A turtle taking a breath at the surface leaves a ripple by its head.
           if (c.breathing) water.disturb(c.x + Math.cos(c.heading) * c.span * 0.4, c.y + Math.sin(c.heading) * c.span * 0.4, 0.7, 1.3);
         }

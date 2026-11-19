@@ -192,6 +192,12 @@ export const tropicalFish = {
     const acc = flock.begin();
     flock.steer(f, want, cruise * pace, k.grip);
     flock.separate(f, k.separation, 0.75);
+    // Near the edge of the reef, a firm push back in, so a crowded school can't shove its
+    // outer fish against the edge.
+    if (home.push > 0) {
+      acc.x += Math.cos(home.angle) * home.push * cruise * 12;
+      acc.y += Math.sin(home.angle) * home.push * cruise * 12;
+    }
     const speed = flock.move(f, dt, cruise * 2);
     const before = f.heading;
     if (speed > 4) flock.face(f, dt, 5);
