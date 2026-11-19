@@ -6,6 +6,7 @@ const FORMATS = {
   speed: (v) => `${v}x`,
   density: (v) => `${v}x`,
   pads: (v) => `${v}x`,
+  flowers: (v) => `${v}x`,
 };
 
 export function initSettings({ scenes, onChange }) {
@@ -61,6 +62,8 @@ export function initSettings({ scenes, onChange }) {
         if (el.type === 'checkbox') el.checked = Boolean(value);
         else el.value = value;
       }
+      // Options that belong to one theme only show while that theme is picked.
+      for (const el of form.querySelectorAll('[data-scene]')) el.hidden = el.dataset.scene !== settings.scene;
       refreshOutputs();
     },
   };

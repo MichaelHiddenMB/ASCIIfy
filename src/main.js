@@ -23,7 +23,7 @@ function resize() {
 }
 
 function buildScene() {
-  scene = SCENES[settings.scene].create({ density: settings.density, pads: settings.pads });
+  scene = SCENES[settings.scene].create({ density: settings.density, pads: settings.pads, flowers: settings.flowers });
   scene.setLight?.(settings.light);
   renderer.use(scene.palette, scene.tuning, scene.ground);
   resize();
@@ -50,6 +50,7 @@ function applySettings(patch) {
     if (changed('density')) scene.setDensity(settings.density);
     if (changed('light')) scene.setLight?.(settings.light);
     if (changed('pads')) scene.setPads?.(settings.pads);
+    if (changed('flowers')) scene.setFlowers?.(settings.flowers);
   }
   if (changed('speed')) loop.setSpeed(settings.speed);
   clock.update(settings);

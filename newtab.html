@@ -30,7 +30,7 @@
   <aside id="settings-panel" hidden>
     <h2>settings</h2>
     <form id="settings-form">
-      <label>scene
+      <label>theme
         <select name="scene"></select>
       </label>
       <label>speed <output data-for="speed"></output>
@@ -39,8 +39,12 @@
       <label>animals <output data-for="density"></output>
         <input type="range" name="density" min="0" max="3" step="0.25">
       </label>
-      <label>lily pads <output data-for="pads"></output>
+      <!-- data-scene: only shown while that theme is active -->
+      <label data-scene="koi-pond">lily pads <output data-for="pads"></output>
         <input type="range" name="pads" min="0" max="3" step="0.25">
+      </label>
+      <label data-scene="meadow">flowers <output data-for="flowers"></output>
+        <input type="range" name="flowers" min="0" max="3" step="0.25">
       </label>
       <label>your name
         <input type="text" name="name" maxlength="40" placeholder="for the greeting">
@@ -48,7 +52,7 @@
       <label class="check"><input type="checkbox" name="showClock"> show clock</label>
       <label class="check"><input type="checkbox" name="clock24"> 24-hour clock</label>
       <label class="check"><input type="checkbox" name="showSearch"> show search bar</label>
-      <label class="check"><input type="checkbox" name="light"> moonlight on the water</label>
+      <label class="check" data-scene="koi-pond"><input type="checkbox" name="light"> moonlight on the water</label>
     </form>
   </aside>
 </body>
