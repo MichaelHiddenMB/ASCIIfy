@@ -1,7 +1,7 @@
 // Koi pond: a top-down view of rippling water with koi swimming beneath lily pads.
 //
 // A scene object is what main.js drives. It provides:
-//   palette, tuning, water   colors, settings and the water surface for the renderer
+//   palette, tuning, ground  colors, settings and the surface (here, water) for the renderer
 //   time, events             the clock, and trail marks waiting to be added
 //   resize(w, h, cw, ch)     the window changed size
 //   step(dt)                 move everything forward by dt seconds
@@ -113,7 +113,7 @@ export function createKoiPond({ density = 1, pads: padAmount = 1 } = {}) {
   return {
     palette: PALETTE,
     tuning,
-    water,
+    ground: water,
     events: [], // nothing for the dotted trail: ripples live in the water instead
     get time() { return flock.time; },
 

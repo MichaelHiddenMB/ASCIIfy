@@ -25,7 +25,7 @@ function resize() {
 function buildScene() {
   scene = SCENES[settings.scene].create({ density: settings.density, pads: settings.pads });
   scene.setLight?.(settings.light);
-  renderer.use(scene.palette, scene.tuning, scene.water);
+  renderer.use(scene.palette, scene.tuning, scene.ground);
   resize();
   renderer.render(scene, 0);
 }

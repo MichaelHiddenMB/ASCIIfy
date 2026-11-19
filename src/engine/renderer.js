@@ -3,8 +3,8 @@
 //
 // Each frame it paints, in order:
 //   1. the background color
-//   2. the water, if the scene has some (see water.js): a smooth shaded surface, plus
-//      characters for ripples and glints that sit underneath everything else
+//   2. the ground, if the scene has one (water.js for the pond, grass.js for the meadow):
+//      a smooth shaded surface, plus characters (ripples, grass) underneath everything else
 //   3. a faint grid of cell lines (painted once, then copied each frame)
 //   4. the "trail": a field of energy that animals leave behind, which spreads out and
 //      fades, drawn as tiny dots
@@ -36,7 +36,7 @@ const SPARKLES = [[255, 255, 255], [228, 246, 255], [200, 244, 255]];
 const CELL_NONE = 0; // empty
 const CELL_SOLID = 1; // a block of color with a character on top
 const CELL_SOFT = 2; // a bare character: soft edges, lines, dots
-const CELL_BACK = 3; // a water character: drawn like a soft one, and anything may cover it
+const CELL_BACK = 3; // a ground character (water, grass): anything may cover it
 
 // The four extra sample points inside each cell, as fractions of the cell (x, y pairs).
 const SUBSAMPLES = [0.25, 0.3, 0.75, 0.3, 0.25, 0.72, 0.75, 0.72];
@@ -71,6 +71,9 @@ export class Pen {
   get ch() { return this.r.ch; }
   get cols() { return this.r.cols; }
   get rows() { return this.r.rows; }
+
+  // A color that reads well against the scene's ground (used for thin details like feelers).
+  get contrast() { return this.r.palette.ink || [150, 160, 200]; }
 
   // Body coordinates (u forward, v across, in units of the animal's size) -> screen pixels.
   toWorld(p, u, v, out) {
@@ -127,8 +130,8 @@ export class Renderer {
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.bg = document.createElement('canvas'); // the background color, painted once and reused
     this.gridCanvas = document.createElement('canvas'); // the cell grid lines, on a see-through canvas
-    this.waterCanvas = document.createElement('canvas'); // the shaded water, one pixel per cell
-    this.water = null;
+    this.groundCanvas = document.createElement('canvas'); // the shaded ground, one pixel per cell
+    this.ground = null;
     this.pen = new Pen(this);
     this.cw = 9;
     this.ch = 13;
@@ -149,10 +152,11 @@ export class Renderer {
   }
 
   // Switch to a scene's colors and settings.
-  use(palette, tuning, water = null) {
+  // `ground` is the surface painted under everything: water, grass, or nothing.
+  use(palette, tuning, ground = null) {
     this.palette = palette;
     this.tuning = tuning;
-    this.water = water;
+    this.ground = ground;
     this.energy.fill(0);
     this.restyle();
   }
@@ -190,8 +194,8 @@ export class Renderer {
     this.canvas.style.height = `${height}px`;
     this.bg.width = this.gridCanvas.width = this.canvas.width;
     this.bg.height = this.gridCanvas.height = this.canvas.height;
-    this.waterCanvas.width = this.cols;
-    this.waterCanvas.height = this.rows;
+    this.groundCanvas.width = this.cols;
+    this.groundCanvas.height = this.rows;
     if (this.cols !== prevCols || this.rows !== prevRows) {
       const n = this.cols * this.rows;
       this.energy = new Float32Array(n);
@@ -212,7 +216,7 @@ export class Renderer {
     g.fillStyle = rgb(...this.palette.background);
     g.fillRect(0, 0, W, H);
     // The faint grid, lined up with real screen pixels so the lines stay crisp. It's on its
-    // own see-through canvas so it can go on top of the water.
+    // own see-through canvas so it can go on top of the ground.
     const gl = this.gridCanvas.getContext('2d');
     gl.setTransform(1, 0, 0, 1, 0, 0);
     gl.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
@@ -244,12 +248,12 @@ export class Renderer {
     this.diffuse(dt);
 
     this.cellFlag.fill(CELL_NONE);
-    // Only use the water if it's sized for the current grid (it's resized just after us).
-    const water = this.water && this.water.cols === cols && this.water.rows === this.rows ? this.water : null;
-    if (water) {
-      // Water characters go in first, at the lowest priority, so everything covers them.
-      water.surface(scene.time, this.width, this.height);
-      const { glyph, glyphColor } = water;
+    // Only use the ground if it's sized for the current grid (it's resized just after us).
+    const ground = this.ground && this.ground.cols === cols && this.ground.rows === this.rows ? this.ground : null;
+    if (ground) {
+      // Ground characters go in first, at the lowest priority, so everything covers them.
+      ground.surface(scene.time, this.width, this.height);
+      const { glyph, glyphColor } = ground;
       for (let i = 0; i < glyph.length; i++) {
         if (!glyph[i]) continue;
         this.cellFlag[i] = CELL_BACK;
@@ -264,13 +268,13 @@ export class Renderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(this.bg, 0, 0);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (water) {
-      // The shaded water is tiny (one pixel per cell); stretching it with smoothing on turns
+    if (ground) {
+      // The shaded ground is tiny (one pixel per cell); stretching it with smoothing on turns
       // it into soft gradients of light across the whole screen.
-      this.waterCanvas.getContext('2d').putImageData(new ImageData(water.rgba, this.cols, this.rows), 0, 0);
+      this.groundCanvas.getContext('2d').putImageData(new ImageData(ground.rgba, this.cols, this.rows), 0, 0);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'low'; // plain bilinear blending: smooth enough, and much cheaper without a GPU
-      ctx.drawImage(this.waterCanvas, 0, 0, this.cols * this.cw, this.rows * this.ch);
+      ctx.drawImage(this.groundCanvas, 0, 0, this.cols * this.cw, this.rows * this.ch);
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(this.gridCanvas, 0, 0);
@@ -377,7 +381,8 @@ export class Renderer {
     const c1 = Math.min(cols - 1, Math.floor((p.x + R) / cw));
     const r0 = Math.max(0, Math.floor((p.y - R) / ch));
     const r1 = Math.min(rows - 1, Math.floor((p.y + R) / ch));
-    const bend = this.pen.refract && this.water && this.water.cols === cols ? this.water : null;
+    const g = this.ground;
+    const bend = this.pen.refract && g && g.refX && g.cols === cols ? g : null;
 
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) {
@@ -517,12 +522,13 @@ export class Renderer {
   }
 
   spot(x, y, glyph, color, fill, fog) {
-    if (this.pen.refract && this.water && this.water.cols === this.cols) {
+    const g = this.ground;
+    if (this.pen.refract && g && g.refX && g.cols === this.cols) {
       // Move the spot the opposite way to how shapes are sampled, so it stays on the body.
       const j = this.cellIndex(x, y);
       if (j >= 0) {
-        x -= this.water.refX[j];
-        y -= this.water.refY[j];
+        x -= g.refX[j];
+        y -= g.refY[j];
       }
     }
     const i = this.cellIndex(x, y);
@@ -536,9 +542,25 @@ export class Renderer {
   drawCells() {
     const { ctx, cols, rows, cw, ch, cellFlag, cellFill, cellColor, cellGlyph } = this;
     const n = cols * rows;
+
+    // Ground characters (water, grass) can fill half the screen, so they're drawn grouped by
+    // color: setting the color once per group is much faster than once per character.
+    const groups = new Map();
+    for (let i = 0; i < n; i++) {
+      if (cellFlag[i] !== CELL_BACK) continue;
+      const g = cellColor[i];
+      let list = groups.get(g);
+      if (!list) groups.set(g, (list = []));
+      list.push(i);
+    }
+    for (const [g, list] of groups) {
+      ctx.fillStyle = rgb(g >>> 16, (g >>> 8) & 255, g & 255);
+      for (const i of list) ctx.fillText(String.fromCharCode(cellGlyph[i]), (i % cols) * cw + cw / 2, ((i / cols) | 0) * ch + ch / 2 + 1);
+    }
+
     for (let i = 0; i < n; i++) {
       const flag = cellFlag[i];
-      if (!flag) continue;
+      if (!flag || flag === CELL_BACK) continue;
       const x = (i % cols) * cw;
       const y = ((i / cols) | 0) * ch;
       if (flag === CELL_SOLID) {

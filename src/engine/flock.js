@@ -206,6 +206,15 @@ export class Flock {
     return out || lost;
   }
 
+  // Which way is back toward the middle, and how urgently (0 = well inside, 1 = at or past
+  // the edge). For animals that should stay on screen instead of crossing it.
+  inward(c, margin) {
+    const { width: W, height: H } = this;
+    const ix = c.x < margin ? (margin - c.x) / margin : c.x > W - margin ? -(c.x - (W - margin)) / margin : 0;
+    const iy = c.y < margin ? (margin - c.y) / margin : c.y > H - margin ? -(c.y - (H - margin)) / margin : 0;
+    return { angle: Math.atan2(iy, ix), push: Math.min(1, Math.hypot(ix, iy)) };
+  }
+
   // ---- steering helpers: each adds into this.acc ----
 
   begin() {
