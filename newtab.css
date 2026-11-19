@@ -4,8 +4,6 @@
   --text: #eef3f6;
   --accent: #eeb640;
   --font: Menlo, Monaco, Consolas, "DejaVu Sans Mono", "Courier New", monospace;
-  /* A soft halo in the background color keeps text readable over the busy scene. */
-  --halo: 0 0 2px var(--bg), 0 0 6px var(--bg), 0 0 12px var(--bg), 0 0 18px var(--bg);
 }
 
 * { box-sizing: border-box; }
@@ -45,7 +43,6 @@ html, body {
 
 #clock {
   text-align: center;
-  text-shadow: var(--halo);
 }
 
 #clock-time {
@@ -54,10 +51,6 @@ html, body {
   font-size: clamp(10px, 1.9vw, 20px);
   line-height: 1;
   color: var(--text);
-  /* The halo would draw dark seams between the block characters, so the digits get a
-     soft glow behind the whole shape instead. */
-  text-shadow: none;
-  filter: drop-shadow(0 0 10px var(--bg)) drop-shadow(0 0 4px var(--bg));
 }
 
 /* The greeting is the main line under the clock; the date is a quieter caption below it.
