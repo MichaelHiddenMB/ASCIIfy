@@ -10,6 +10,7 @@
 // instead of spreading into the grass. It's also told the box around the pond (water.box), so
 // it only spends time shading the part of the screen where there's actually water.
 import { clamp, hash3, smoothstep } from './math.js';
+import { AIR } from './grass.js';
 
 const GRASS = 0, SHORE = 1, WATER = 2;
 const SHORE_WIDTH = 0.07; // how wide the shore band is, in the shape function's units
@@ -65,6 +66,16 @@ export class GroundMix {
     water.box = c0 <= c1 ? { c0: Math.max(0, c0 - 2), c1: Math.min(cols - 1, c1 + 2), r0: Math.max(0, r0 - 2), r1: Math.min(rows - 1, r1 + 2) } : { c0: 0, c1: -1, r0: 0, r1: -1 };
   }
 
+  // Blends the pale glow of moving air into one pixel of the ground image.
+  addGlow(o, amount) {
+    const g = Math.min(0.32, amount);
+    if (g <= 0.01) return;
+    const { rgba } = this;
+    rgba[o] += (AIR[0] - rgba[o]) * g;
+    rgba[o + 1] += (AIR[1] - rgba[o + 1]) * g;
+    rgba[o + 2] += (AIR[2] - rgba[o + 2]) * g;
+  }
+
   step(dt) {
     this.land.step(dt);
     this.water.step(dt);
@@ -75,6 +86,7 @@ export class GroundMix {
     land.surface(t, width, height);
     water.surface(t, width, height);
     const shade = land.shade; // insect shadows fall on the water and shore too
+    const air = land.air; // and the wind's glow shows over them
     for (let i = 0; i < kind.length; i++) {
       const o = i * 4;
       const k = kind[i];
@@ -92,6 +104,7 @@ export class GroundMix {
         rgba[o + 1] = (water.rgba[o + 1] + (SHALLOWS[1] - water.rgba[o + 1]) * s) * dark;
         rgba[o + 2] = (water.rgba[o + 2] + (SHALLOWS[2] - water.rgba[o + 2]) * s) * dark;
         rgba[o + 3] = 255;
+        this.addGlow(o, air[i]);
         glyph[i] = water.glyph[i];
         glyphColor[i] = water.glyphColor[i];
         continue;
@@ -104,6 +117,7 @@ export class GroundMix {
       const G = (MUD[1] + (WET_MUD[1] - MUD[1]) * wet) * dark;
       const B = (MUD[2] + (WET_MUD[2] - MUD[2]) * wet) * dark;
       rgba[o] = R; rgba[o + 1] = G; rgba[o + 2] = B; rgba[o + 3] = 255;
+      this.addGlow(o, air[i]);
       if (h < 0.18) {
         glyph[i] = (h < 0.07 ? 'o' : '.').charCodeAt(0);
         glyphColor[i] = pack(PEBBLE[0] * dark, PEBBLE[1] * dark, PEBBLE[2] * dark);

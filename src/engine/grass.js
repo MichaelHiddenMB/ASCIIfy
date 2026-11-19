@@ -19,6 +19,10 @@
 //
 // SHADOWS. The scene hands us a list of shadows (one per flying insect), and we darken the
 // grass under each one.
+//
+// AIR. The scene can also "paint" moving air onto the ground (addAir): a faint pale glow that
+// fades over a second or so. Because the ground image is smoothly stretched across the
+// screen, those glowing dabs blur into soft streaks, which is how the mouse's wind is shown.
 import { clamp, hash3, smoothstep } from './math.js';
 import { fbm2, noise2 } from './noise.js';
 import { lineGlyph } from './renderer.js';
@@ -28,6 +32,7 @@ const DARK = [18, 46, 24];
 const LUSH = [46, 92, 40];
 const DRY = [112, 106, 54];
 const SHEEN = [124, 158, 96]; // the lighter color of bent-over blades
+export const AIR = [204, 224, 212]; // the pale glow of moving air
 const TUFTS = ['"', "'", ',', '.', '`', ';', '"', ','];
 // Wildflower colors: daisy white, buttercup yellow, clover purple, campion pink.
 const BLOOMS = [[236, 236, 220], [244, 212, 70], [178, 132, 222], [236, 140, 182]];
@@ -60,6 +65,7 @@ export class Grass {
     this.windX = new Float32Array(n); // total bend including the wind, from the last frame
     this.windY = new Float32Array(n);
     this.shade = new Float32Array(n); // shadow darkness this frame
+    this.air = new Float32Array(n); // glow of moving air, fading over time
     this.rgba = new Uint8ClampedArray(n * 4);
     this.glyph = new Uint16Array(n);
     this.glyphColor = new Uint32Array(n);
@@ -162,6 +168,22 @@ export class Grass {
     }
   }
 
+  // Paints a dab of moving air at (x, y) in pixels: a soft glow `radius` cells across.
+  addAir(x, y, amount, radius = 1.5) {
+    const { cols, rows, cw, ch, air } = this;
+    if (!cols) return;
+    const cx = x / cw - 0.5, cy = y / ch - 0.5;
+    const ry = Math.ceil(radius * this.aspect) + 1;
+    for (let r = Math.max(0, Math.round(cy) - ry); r <= Math.min(rows - 1, Math.round(cy) + ry); r++) {
+      for (let c = Math.max(0, Math.round(cx) - Math.ceil(radius)); c <= Math.min(cols - 1, Math.round(cx) + Math.ceil(radius)); c++) {
+        const d = Math.hypot(c - cx, (r - cy) / this.aspect) / radius;
+        if (d >= 1) continue;
+        const i = r * cols + c;
+        air[i] = Math.min(0.6, air[i] + amount * (1 - d * d));
+      }
+    }
+  }
+
   // How the grass at (x, y) is leaning right now (wind included), e.g. to sway a flower.
   bendAt(x, y) {
     const c = clamp(Math.floor(x / this.cw), 0, this.cols - 1);
@@ -172,10 +194,12 @@ export class Grass {
 
   step(dt) {
     const k = Math.exp(-dt * 1.8); // springing back: lose a bit of the bend every step
-    const { bx, by } = this;
+    const fade = Math.exp(-dt * 2.2); // moving air fades a little faster
+    const { bx, by, air } = this;
     for (let i = 0; i < bx.length; i++) {
       bx[i] *= k;
       by[i] *= k;
+      air[i] *= fade;
     }
   }
 
@@ -225,6 +249,10 @@ export class Grass {
         R = (R + (SHEEN[0] - R) * sheen) * bright;
         G = (G + (SHEEN[1] - G) * sheen) * bright;
         B = (B + (SHEEN[2] - B) * sheen) * bright;
+        const glow = Math.min(0.42, this.air[i]);
+        R += (AIR[0] - R) * glow;
+        G += (AIR[1] - G) * glow;
+        B += (AIR[2] - B) * glow;
         const o = i * 4;
         rgba[o] = R;
         rgba[o + 1] = G;
