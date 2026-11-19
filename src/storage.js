@@ -11,6 +11,7 @@ export const DEFAULTS = {
   density: 1,
   pads: 1, // how many lily pads, relative to the default for the screen size
   flowers: 1, // how many flowers in the meadow
+  meadowPond: true, // the little pond with koi in the middle of the meadow
   name: '',
   showClock: true,
   showSearch: true,

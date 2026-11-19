@@ -23,7 +23,12 @@ function resize() {
 }
 
 function buildScene() {
-  scene = SCENES[settings.scene].create({ density: settings.density, pads: settings.pads, flowers: settings.flowers });
+  scene = SCENES[settings.scene].create({
+    density: settings.density,
+    pads: settings.pads,
+    flowers: settings.flowers,
+    pond: settings.meadowPond,
+  });
   scene.setLight?.(settings.light);
   renderer.use(scene.palette, scene.tuning, scene.ground);
   resize();
@@ -45,7 +50,7 @@ function applySettings(patch) {
   settings = { ...settings, ...patch };
   if (!SCENES[settings.scene]) settings.scene = DEFAULT_SCENE;
   const changed = (key) => key in patch && patch[key] !== prev[key];
-  if (changed('scene')) buildScene();
+  if (changed('scene') || changed('meadowPond')) buildScene();
   else {
     if (changed('density')) scene.setDensity(settings.density);
     if (changed('light')) scene.setLight?.(settings.light);
