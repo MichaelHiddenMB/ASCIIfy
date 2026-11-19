@@ -22,13 +22,17 @@ function resize() {
   scene.resize(w, h, renderer.cw, renderer.ch);
 }
 
+// Each theme with a sunset has its own setting for it, so turning it on in one doesn't
+// change the others.
+const sunsetFor = (s) => (s.scene === 'beach' ? s.beachSunset : s.sunset);
+
 function buildScene() {
   scene = SCENES[settings.scene].create({
     density: settings.density,
     pads: settings.pads,
     flowers: settings.flowers,
     pond: settings.meadowPond,
-    sunset: settings.sunset,
+    sunset: sunsetFor(settings),
   });
   document.body.dataset.scene = settings.scene; // lets the stylesheet adjust to the theme
   scene.setLight?.(settings.light);
@@ -58,7 +62,7 @@ function applySettings(patch) {
     if (changed('light')) scene.setLight?.(settings.light);
     if (changed('pads')) scene.setPads?.(settings.pads);
     if (changed('flowers')) scene.setFlowers?.(settings.flowers);
-    if (changed('sunset')) scene.setSunset?.(settings.sunset);
+    if (changed('sunset') || changed('beachSunset')) scene.setSunset?.(sunsetFor(settings));
   }
   if (changed('speed')) loop.setSpeed(settings.speed);
   clock.update(settings);

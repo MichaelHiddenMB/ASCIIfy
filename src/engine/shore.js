@@ -20,6 +20,10 @@
 // own strength, so the waves come in at a slant and some reach further up the beach than
 // others. Wet sand dries slowly, so the high-water mark of the last big wave lingers.
 //
+// SUNSET. With the sun low over the sea (`setSunset`), the water takes dusky colors and a
+// shimmering golden path of glints leads across it toward the sun, widening as it comes
+// closer to the beach.
+//
 // SHADOWS. The scene hands the shore a list of soft round shadows each frame (one under each
 // animal and shell), and the sand and the sea floor are darkened under them. Seen through
 // the water, a shadow on the sea floor is a little fainter.
@@ -39,9 +43,12 @@ const DAMP = [154, 130, 94]; // sand the waves reach now and then
 const WRACK = [74, 76, 42]; // dried seaweed along the high-water line
 const SHELL_BITS = [224, 214, 192];
 const PEBBLE = [128, 120, 110];
-const SHALLOW = [64, 178, 172]; // the sea, from the beach outward
-const MID = [26, 122, 150];
-const DEEP = [12, 56, 104];
+// The sea's colors, from the beach outward: by day, and at sunset, when it reflects the dusky
+// evening sky (the sunset's warm grade is then laid over everything, see engine/sunset.js).
+const DAY_SEA = { shallow: [64, 178, 172], mid: [26, 122, 150], deep: [12, 56, 104] };
+const SUNSET_SEA = { shallow: [92, 146, 186], mid: [56, 92, 168], deep: [38, 46, 128] };
+const SUN_PATH = [255, 196, 118]; // the golden path of light on the water toward a low sun
+const SUN_GLINT = [255, 230, 170];
 const FOAM = [236, 244, 242];
 const GLITTER = [250, 252, 240];
 const GRAINS = ['.', ',', '`', "'", '.', ':'];
@@ -69,6 +76,8 @@ export class Shore {
     this.lastT = 0;
     this.amp = new Float32Array(6); // scratch: the strengths of the next few waves on one row
     this.shadows = []; // { x, y, radius, strength } in pixels, set by the scene each frame
+    this.sea = DAY_SEA;
+    this.sun = null; // at sunset: where the sun is, as fractions of the screen
   }
 
   resize(cols, rows, cw, ch) {
@@ -100,6 +109,7 @@ export class Shore {
     this.flow = new Float32Array(rows); // how fast the water's edge is moving (px/s): negative = rushing up the beach
     this.foam = new Float32Array(n); // how foamy each cell is this frame (0 on dry sand)
     this.shade = new Float32Array(n); // how dark the shadows make each cell this frame
+    this.stir = new Float32Array(n); // how much the water is rippling in each cell (the mouse, splashes)
 
     // The beach curves gently: a long bend plus small wobbles.
     const a = hash3(seed, 1, 1) * 6.28, b = hash3(seed, 2, 1) * 6.28;
@@ -155,6 +165,12 @@ export class Shore {
     }
   }
 
+  // Sunset on or off. `sun` is where the sun is, as fractions of the screen's width and height.
+  setSunset(on, sun) {
+    this.sea = on ? SUNSET_SEA : DAY_SEA;
+    this.sun = on ? sun : null;
+  }
+
   // Where the water's edge is right now on the row at y, in screen pixels (x).
   waterline(y) {
     const r = clamp(Math.floor(y / this.ch), 0, this.rows - 1);
@@ -191,6 +207,7 @@ export class Shore {
     const col = [0, 0, 0], tmp = [0, 0, 0];
     const seaW = this.seaWidth;
     const shade = this.shade;
+    const sunX = this.sun ? this.sun.x * width : null, sunY = this.sun ? this.sun.y * height : 0;
 
     // Shadows: darkest in the middle, fading out to the edge.
     shade.fill(0);
@@ -270,8 +287,9 @@ export class Shore {
         // ---- water ----
         const dd = Math.max(0, d);
         const f = Math.pow(clamp(dd / (seaW * 0.85), 0, 1), 0.7);
-        if (f < 0.4) mixInto(col, SHALLOW, MID, f / 0.4);
-        else mixInto(col, MID, DEEP, (f - 0.4) / 0.6);
+        const sea = this.sea;
+        if (f < 0.4) mixInto(col, sea.shallow, sea.mid, f / 0.4);
+        else mixInto(col, sea.mid, sea.deep, (f - 0.4) / 0.6);
 
         // The swell: a smooth, rounded crest every `L` pixels. `qq` is how far this cell is
         // behind the nearest crest on its shore side (0 at that crest, 1 at the next one out).
@@ -353,8 +371,18 @@ export class Shore {
           mixInto(tmp, tmp, WET, 0.85);
           mixInto(col, tmp, col, 0.2 + 0.8 * smoothstep(0, 60, d - e));
         }
+        // At sunset, the golden path toward the sun: a band that's narrow near the sun and
+        // wider nearer the beach, broken up into shimmering patches.
+        let path = 0;
+        if (sunX !== null && dd > 30) {
+          const py = (r + 0.5) * ch, px = (c + 0.5) * cw;
+          const band = (py - sunY) / (16 + Math.max(0, sunX - px) * 0.06);
+          path = Math.exp(-band * band) * smoothstep(0.45, 0.8, noise2(c * 0.7 + t * 0.9, r * 0.7 / aspect - t * 0.3, seed + 30) + height * 0.2);
+          if (path > 0) mixInto(col, col, SUN_PATH, path * 0.5);
+        }
         if (foam > 0) mixInto(col, col, FOAM, Math.min(0.95, foam));
         this.foam[i] = foam;
+        this.stir[i] = ripple;
         rgba[o] = col[0]; rgba[o + 1] = col[1]; rgba[o + 2] = col[2]; rgba[o + 3] = 255;
 
         // Refraction: things underwater appear shifted where the surface tilts.
@@ -369,6 +397,9 @@ export class Shore {
         } else if (ripple > 0.12) {
           glyph[i] = lineGlyph(Math.atan2(gy, gx - swellSlope * cw) + Math.PI / 2).charCodeAt(0);
           glyphColor[i] = pack(col[0] * 1.3 + 40, col[1] * 1.3 + 50, col[2] * 1.3 + 50);
+        } else if (path > 0.25 && hash3(c, r, (t * 4) | 0) < path * 0.5) {
+          glyph[i] = (hash3(c, r, 6) < 0.35 ? '*' : hash3(c, r, 7) < 0.5 ? '+' : '-').charCodeAt(0); // glints on the sun's path
+          glyphColor[i] = pack(...SUN_GLINT);
         } else if (reefGlyph) {
           const g = reef.glyphColor, k3 = rj * 3, m = haze * 0.85;
           glyphColor[i] = pack(g[k3] + (col[0] - g[k3]) * m, g[k3 + 1] + (col[1] - g[k3 + 1]) * m, g[k3 + 2] + (col[2] - g[k3 + 2]) * m);
@@ -376,7 +407,7 @@ export class Shore {
         } else if (height > 0.6 && ampHere > 0.45 && hash3(c, r, n + k) < 0.55) {
           glyph[i] = (hash3(c, r, 5) < 0.6 ? '~' : '-').charCodeAt(0); // the crest line
           glyphColor[i] = pack(col[0] * 1.25 + 30, col[1] * 1.25 + 34, col[2] * 1.2 + 34);
-        } else if (dd > 60 && hash3(c, r, (t * 2.5) | 0) < 0.0015 * (0.4 + f)) {
+        } else if (sunX === null && dd > 60 && hash3(c, r, (t * 2.5) | 0) < 0.0015 * (0.4 + f)) {
           glyph[i] = (hash3(c, r, 3) < 0.15 ? '+' : "'").charCodeAt(0); // sun glitter
           glyphColor[i] = pack(...GLITTER);
         } else if (f > 0.1 && hash3(c, r, (t * 0.5) | 0) < 0.04) {

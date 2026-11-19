@@ -6,12 +6,13 @@
 // window size and kept, since it doesn't change from frame to frame.
 //
 // `sunX` and `sunY` say where the sun is, as fractions of the screen's width and height (it can
-// be just off screen, like a sun low on the horizon).
+// be just off screen, like a sun low on the horizon). `tint` is the warm color everything is
+// multiplied by: the meadow's is strong; the beach uses a gentler one so the sea stays blue.
 const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-const TINT = [1, 178 / 255, 132 / 255];
+const WARM = [1, 178 / 255, 132 / 255];
 const NEAR = [1, 1, 1], MID = [220 / 255, 190 / 255, 200 / 255], DUSK = [120 / 255, 96 / 255, 140 / 255];
 
-export function makeSunsetGrade(sunX, sunY) {
+export function makeSunsetGrade(sunX, sunY, tint = WARM) {
   let cache = null;
   return function grade(cols, rows, W, H) {
     if (cache && cache.cols === cols && cache.rows === rows) return cache;
@@ -31,7 +32,7 @@ export function makeSunsetGrade(sunX, sunY) {
         const glow = s < 0.4 ? 0.5 + (0.16 - 0.5) * (s / 0.4) : 0.16 * (1 - (s - 0.4) / 0.6);
         const glowColor = s < 0.4 ? [255, 150, 70] : [255, 120, 60];
         for (let k = 0; k < 3; k++) {
-          mul[i * 3 + k] = TINT[k] * shade[k];
+          mul[i * 3 + k] = tint[k] * shade[k];
           add[i * 3 + k] = (glow * glowColor[k]) / 255;
         }
       }

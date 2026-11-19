@@ -25,6 +25,7 @@
 // running. A click on the water makes a splash; a click on the sand scares nearby crabs.
 import { Flock } from '../engine/flock.js';
 import { Shore } from '../engine/shore.js';
+import { makeSunsetGrade } from '../engine/sunset.js';
 import { clamp, rand } from '../engine/math.js';
 import { buildReef, drawReef } from './reef.js';
 import { drawShells, placeShells, stepShells } from './shells.js';
@@ -42,15 +43,19 @@ const PALETTE = {
   ink: [60, 44, 30], // dark, for thin details like crab legs against the sand
 };
 
+// At sunset the sun is low over the sea, just off the right edge (fractions of the screen).
+const SUN = { x: 1.06, y: 0.3 };
 const CRABS = 2;
 const JELLIES = 4;
 const FISH = 22;
 const TURTLES = 2;
 const RAYS = 2;
 
-export function createBeach({ density = 1 } = {}) {
+export function createBeach({ density = 1, sunset = false } = {}) {
   const tuning = { fog: 0.6, shimmer: 0.3, sparkle: 0.1, trail: 0, trailFade: 0.4, grid: 1 };
   const shore = new Shore();
+  shore.setSunset(sunset, SUN);
+  const sunsetGrade = makeSunsetGrade(SUN.x, SUN.y, [1, 0.82, 0.72]); // gentler than the meadow's, so the sea stays blue
   const water = shore.water;
   const crabTuning = { ...crabs.defaults };
   const crabFlock = new Flock(crabs, crabTuning, Math.round(CRABS * density));
@@ -116,16 +121,22 @@ export function createBeach({ density = 1 } = {}) {
     if (c.y > bottom) { c.y = bottom; slideAlong(c, bottom, 0, -1); }
   }
 
-  // Where the shadows fall. The sun is high in the sky, a little to the top left, so shadows
-  // fall a short way down and to the right. A sea creature's shadow is on the sea floor: the
-  // higher it swims (the nearer the surface, the bigger its depth), the further away and the
-  // softer its shadow.
-  const sun = { x: 0.6, y: 0.8, length: 1 };
+  // Where the shadows fall. By day the sun is high in the sky, a little to the top left, so
+  // shadows fall a short way down and to the right. At sunset the sun is low over the sea, so
+  // shadows stretch out long, away from it, toward the beach. A sea creature's shadow is on
+  // the sea floor: the higher it swims (the nearer the surface, the bigger its depth), the
+  // further away and the softer its shadow.
   function castShadows() {
     const list = [];
-    const add = (x, y, height, radius, strength) => list.push({
-      x: x + sun.x * height * sun.length, y: y + sun.y * height * sun.length, radius: radius * (1 + height / 160), strength,
-    });
+    const sx = SUN.x * size.w, sy = SUN.y * size.h;
+    const add = (x, y, height, radius, strength) => {
+      let dx = 0.6, dy = 0.8, length = 1;
+      if (sunset) {
+        const d = Math.hypot(x - sx, y - sy) || 1;
+        dx = (x - sx) / d; dy = (y - sy) / d; length = 2.6;
+      }
+      list.push({ x: x + dx * height * length, y: y + dy * height * length, radius: radius * (1 + (height * length) / 160), strength });
+    };
     for (const kind of sea) {
       const [size, dark] = kind.shadow;
       for (const c of kind.flock.creatures) add(c.x, c.y, 14 + 75 * c.depth, c.span * size, dark * (1 - 0.25 * c.depth));
@@ -275,6 +286,16 @@ export function createBeach({ density = 1 } = {}) {
         }
       }
       lastPointer = { x, y, t: now };
+    },
+
+    setSunset(on) {
+      sunset = on;
+      shore.setSunset(on, SUN);
+    },
+
+    // The sunset's color grade (see engine/sunset.js), or nothing by day.
+    grade(cols, rows, W, H) {
+      return sunset ? sunsetGrade(cols, rows, W, H) : null;
     },
 
     setDensity(d) {

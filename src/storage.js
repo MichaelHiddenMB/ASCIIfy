@@ -13,6 +13,7 @@ export const DEFAULTS = {
   flowers: 1, // how many flowers in the meadow
   meadowPond: true, // the little pond with koi, and the tree beside it, in the meadow
   sunset: false, // sunset lighting and fireflies in the meadow
+  beachSunset: false, // sunset over the sea at the beach
   name: '',
   showClock: true,
   showSearch: true,
