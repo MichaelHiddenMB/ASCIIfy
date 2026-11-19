@@ -35,7 +35,6 @@ function greeting(hour, name) {
 export function initClock() {
   const root = document.getElementById('clock');
   const timeEl = document.getElementById('clock-time');
-  const dateEl = document.getElementById('clock-date');
   const greetingEl = document.getElementById('greeting');
   let opts = { name: '', clock24: false };
   let lastKey = '';
@@ -51,12 +50,11 @@ export function initClock() {
     }
     const time = `${opts.clock24 ? String(h).padStart(2, '0') : h}:${minutes}`;
     // Only touch the page when something visible actually changed.
-    const key = `${time}${suffix}${opts.name}${now.toDateString()}`;
+    const key = `${time}${suffix}${opts.name}`;
     if (key === lastKey) return;
     lastKey = key;
     timeEl.textContent = bigText(suffix ? `${time} ${suffix}` : time);
     timeEl.setAttribute('aria-label', `${time} ${suffix}`.trim());
-    dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long' }); // just the day of the week
     greetingEl.textContent = greeting(now.getHours(), opts.name);
   }
 

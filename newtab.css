@@ -64,21 +64,12 @@ body[data-scene="beach"] #clock {
   filter: drop-shadow(0 0 10px rgba(6, 22, 38, 0.5));
 }
 
-/* The greeting is the main line under the clock; the date is a quieter caption below it.
-   Using size and brightness (not two competing colors) makes the order obvious. */
+/* The greeting: the line under the clock. */
 #greeting {
   margin: 18px 0 0;
   font-size: 19px;
   letter-spacing: 0.02em;
   color: color-mix(in srgb, var(--text) 92%, transparent);
-}
-
-#clock-date {
-  margin: 8px 0 0;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--text) 55%, transparent);
 }
 
 #search {
