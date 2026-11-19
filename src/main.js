@@ -6,6 +6,7 @@ import { loadSettings, saveSettings, watchSettings } from './storage.js';
 import { initClock } from './ui/clock.js';
 import { initSearch } from './ui/search.js';
 import { initBookmarks } from './ui/bookmarks.js';
+import { initGoogleLinks } from './ui/google-links.js';
 import { initSettings } from './ui/settings.js';
 
 const canvas = document.getElementById('scene');
@@ -72,6 +73,7 @@ const loop = createLoop({
 const clock = initClock();
 const search = initSearch();
 const bookmarks = initBookmarks();
+const googleLinks = initGoogleLinks();
 const panel = initSettings({ scenes: SCENES, onChange: saveSettings });
 
 function applySettings(patch) {
@@ -92,6 +94,7 @@ function applySettings(patch) {
   clock.update(settings);
   search.update(settings);
   bookmarks.update(settings);
+  googleLinks.update(settings);
   panel.show(settings);
 }
 

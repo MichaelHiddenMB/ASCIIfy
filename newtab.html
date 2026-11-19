@@ -25,6 +25,17 @@
     <div class="bm-other"></div>
   </nav>
 
+  <!-- Quick links in the top right, like Google's new tab page: src/ui/google-links.js -->
+  <nav id="google-links" aria-label="Google">
+    <a class="gl-link gl-gmail" href="https://mail.google.com/mail/">gmail</a>
+    <a class="gl-link gl-images" href="https://www.google.com/imghp">images</a>
+    <button class="gl-apps" type="button" aria-label="Google apps" title="Google apps" aria-haspopup="menu" aria-expanded="false">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="1.5"/><circle cx="8" cy="3" r="1.5"/><circle cx="13" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="8" cy="13" r="1.5"/><circle cx="13" cy="13" r="1.5"/></g></svg>
+    </button>
+    <button class="gl-profile" type="button" aria-label="Google Account" aria-haspopup="menu" aria-expanded="false"></button>
+    <a class="gl-sign-in" href="https://accounts.google.com/" hidden>Sign in</a>
+  </nav>
+
   <!-- Normal page elements layered on top of the canvas. -->
   <main id="overlay">
     <section id="clock">
@@ -69,6 +80,7 @@
       <label class="check"><input type="checkbox" name="clock24"> 24-hour clock</label>
       <label class="check"><input type="checkbox" name="showSearch"> show search bar</label>
       <label class="check"><input type="checkbox" name="showBookmarks"> show bookmarks bar</label>
+      <label class="check"><input type="checkbox" name="showGoogleLinks"> show google links</label>
       <label class="check" data-scene="koi-pond"><input type="checkbox" name="light"> moonlight on the water</label>
       <label class="check" data-scene="meadow"><input type="checkbox" name="meadowPond"> pond and tree</label>
       <label class="check" data-scene="meadow"><input type="checkbox" name="sunset"> sunset</label>

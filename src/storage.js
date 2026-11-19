@@ -19,6 +19,7 @@ export const DEFAULTS = {
   showClock: true,
   showSearch: true,
   showBookmarks: true, // our own bookmarks bar along the top (see src/ui/bookmarks.js)
+  showGoogleLinks: true, // gmail, images, apps and profile in the top right (src/ui/google-links.js)
   light: true, // the moonlight reflection on the water
   clock24: false,
 };

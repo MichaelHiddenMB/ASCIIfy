@@ -6,7 +6,8 @@
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
-  "permissions": ["storage", "search", "bookmarks", "favicon"],
+  "permissions": ["storage", "search", "bookmarks", "favicon", "declarativeNetRequestWithHostAccess", "webNavigation"],
+  "host_permissions": ["https://ogs.google.com/*", "https://www.google.com/*", "https://lh3.google.com/*"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

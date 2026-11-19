@@ -242,6 +242,128 @@ body[data-scene="beach"] #clock {
   color: color-mix(in srgb, var(--text) 45%, transparent);
 }
 
+/* ---------- google links ----------
+   gmail, images, the apps grid and the profile button in the top right corner, like Google's
+   own new tab page. They sit just under the bookmarks bar when it's showing, and at the very
+   top when it isn't. The apps menu borrows the bookmarks menus' box. (src/ui/google-links.js) */
+
+#google-links {
+  position: fixed;
+  top: 8px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: 13px var(--font);
+}
+#bookmarks:not([hidden]) ~ #google-links { top: 40px; }
+
+/* The beach is bright, so the links get the same soft dark halo as the clock there. */
+body[data-scene="beach"] #google-links {
+  filter: drop-shadow(0 0 6px rgba(6, 22, 38, 0.6));
+}
+
+.gl-link,
+.gl-apps,
+.gl-profile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  background: none;
+  border: none;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.gl-link {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 14px;
+}
+.gl-link:hover,
+.gl-link:focus-visible { outline: none; text-decoration: underline; }
+
+.gl-apps {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+.gl-apps svg { width: 18px; height: 18px; }
+.gl-apps:hover,
+.gl-apps.open,
+.gl-apps:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+}
+
+.gl-profile {
+  width: 40px;
+  height: 40px;
+  margin-left: 2px;
+  padding: 0;
+  border-radius: 50%;
+}
+.gl-profile img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.gl-profile svg { width: 24px; height: 24px; }
+.gl-profile:hover,
+.gl-profile.open,
+.gl-profile:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+}
+
+/* Signed out: Google's blue "Sign in" button. */
+.gl-sign-in {
+  margin-left: 6px;
+  padding: 9px 23px;
+  border-radius: 4px;
+  background: #1a73e8;
+  color: #fff;
+  font: 500 14px Arial, sans-serif;
+  text-decoration: none;
+}
+.gl-sign-in:hover { background: #1b66c9; }
+
+/* The apps grid or account menu: Google's own page in a frame, seen through a window cut to
+   the exact size and rounded corners of the card Google draws (see THE MENUS' SHAPE in
+   src/ui/google-links.js). The frame is moved inside the window (left/top set from the
+   script) so the card lines up with it, and the window draws the card's shadow. */
+.gl-menu {
+  position: fixed;
+  z-index: 3;
+  overflow: hidden;
+  border-radius: 24px;
+  box-shadow: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.gl-menu iframe {
+  position: absolute;
+  display: block;
+  border: none;
+}
+
+/* Our invisible stand-in for Google's X in the account menu, laid exactly over it. */
+.gl-menu-close {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px; /* centred on the spot it's placed at */
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.gl-menu-close:hover { background: rgba(127, 127, 127, 0.18); }
+
 /* ---------- settings ----------
    Styled like a box drawn in text: thin lines with + at the corners, the title set into the
    top line like +--[ settings ]---+, sliders drawn as [######------], checkboxes as [x], and
