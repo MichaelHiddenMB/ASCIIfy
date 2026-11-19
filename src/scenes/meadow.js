@@ -1,5 +1,5 @@
-// Meadow: a top-down view of a grassy field with wildflowers, butterflies and dragonflies, and
-// (optionally) a little pond with koi in the middle.
+// Meadow: a top-down view of a grassy field with wildflowers, butterflies and dragonflies, a
+// big tree in the bottom-left corner, and (optionally) a little pond with koi beside it.
 // Same scene shape as koi-pond.js (see the list of what a scene provides at the top of that file).
 //
 // What happens here:
@@ -18,14 +18,21 @@
 // went. Close to the path the wind is strongest; it fades with distance and with age.
 // Anything caught in it gets carried along: butterflies (light) are dragged and tumble a
 // little, dragonflies (heavier) are nudged and may dart off downwind, butterflies resting on
-// flowers are blown off, and bits of seed fluff and petals are kicked up and float away on
-// it, which makes the wind visible. It also brushes the grass and ripples the pond.
+// flowers are blown off, the tree's leaves rustle, and bits of seed fluff and petals float
+// away on it. It also brushes the grass and ripples the pond.
+//
+// To make the wind itself visible there are "wisps": pale streaks of air that start across a
+// wide band along the mouse's path and drift with the stream, curling a little as they go and
+// fading out. Each wisp leaves a short trail of faint characters, and also paints a soft glow
+// onto the ground (grass.addAir), which the smooth ground image blurs into streaks.
 import { Flock } from '../engine/flock.js';
 import { Grass } from '../engine/grass.js';
 import { Water } from '../engine/water.js';
 import { GroundMix } from '../engine/ground-mix.js';
 import { INK_SCALE, ink } from '../engine/ink.js';
 import { clamp, rand, smoothstep, TAU } from '../engine/math.js';
+import { lineGlyph } from '../engine/renderer.js';
+import { makeTree, swayTree, drawTree, treeShadow } from './tree.js';
 import { butterflies } from '../animals/butterflies.js';
 import { dragonflies } from '../animals/dragonflies.js';
 import { koi } from '../animals/koi.js';
@@ -53,8 +60,9 @@ const MOTES = [
 ];
 
 const WIND_LIFE = 0.9; // seconds a piece of the mouse's wind stream lasts
-const WIND_REACH = 90; // how far from the mouse's path the wind is felt, in pixels
-const KOI_PER_POND = 4;
+const WIND_REACH = 130; // how far from the mouse's path the wind is felt, in pixels
+const WISP = [214, 232, 222]; // the pale color of wind wisps
+const KOI_PER_POND = 3;
 
 export function createMeadow({ density = 1, flowers: flowerAmount = 1, pond = true } = {}) {
   // Both insects at their reference look, but fewer of each since they share the screen.
@@ -72,10 +80,12 @@ export function createMeadow({ density = 1, flowers: flowerAmount = 1, pond = tr
   let lastPointer = null;
   const gusts = []; // pieces of the mouse's path: { x0, y0, x1, y1, vx, vy, len, born }
   const motes = []; // seed fluff and petals carried by the wind
+  const wisps = []; // pale streaks of moving air
+  let tree = null;
 
   // ---- the optional pond ----
-  // Its outline is a slightly wobbly oval in the middle of the screen. pondShape() says how
-  // far a point is from the middle: below 1 is water.
+  // Its outline is a slightly wobbly oval near the bottom-left corner. pondShape() says how
+  // far a point is from its middle: below 1 is water.
   const P = { cx: 0, cy: 0, rx: 1, ry: 1, a: rand(0, TAU), b: rand(0, TAU) };
   function pondShape(x, y) {
     const dx = (x - P.cx) / P.rx, dy = (y - P.cy) / P.ry;
@@ -121,6 +131,7 @@ export function createMeadow({ density = 1, flowers: flowerAmount = 1, pond = tr
         const a = rand(0, TAU), r = rand(0, 70) * scale;
         const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
         if (koiFlock && pondShape(x, y) < 1.25) continue;
+        if (tree && Math.hypot(x - tree.x, y - tree.y) < tree.span * 0.5) continue; // not under the tree
         flowers.push({
           x, y,
           dx: 0, dy: 0, // how far the wind is swaying it
@@ -183,10 +194,14 @@ export function createMeadow({ density = 1, flowers: flowerAmount = 1, pond = tr
     get time() { return bFlock.time; },
 
     resize(w, h, cw, ch) {
-      P.cx = w / 2;
-      P.cy = h * 0.5 - 40; // centered behind the clock and search bar
-      P.rx = clamp(w * 0.24, 160, 420);
-      P.ry = clamp(h * 0.27, 110, 260);
+      // The pond sits in the bottom-left corner (the settings button is bottom right).
+      P.rx = clamp(w * 0.15, 130, 280);
+      P.ry = clamp(h * 0.19, 90, 190);
+      P.cx = P.rx + clamp(w * 0.05, 40, 90);
+      P.cy = h - P.ry - clamp(h * 0.06, 40, 70);
+      if (water) water.light = { x: (P.cx + P.rx * 0.35) / w, y: (P.cy - P.ry * 0.35) / h, z: 0.8 }; // the sun's glint lands on the pond
+      // The tree stands on the pond's far bank, its canopy hanging over the water.
+      tree = makeTree(P.cx - P.rx * 0.45, P.cy - P.ry * 1.05, clamp(Math.min(w, h) * 0.34, 200, 330));
       bFlock.resize(w, h);
       dFlock.resize(w, h);
       ground.resize(Math.ceil(w / cw), Math.ceil(h / ch), cw, ch);
@@ -221,24 +236,60 @@ export function createMeadow({ density = 1, flowers: flowerAmount = 1, pond = tr
           if (w.strength < 20) continue;
           if (b.state !== 'fly' && w.strength > 120) butterflies.disturb(b, bFlock); // blown off its flower
           if (b.state === 'landed') continue;
-          b.x += w.x * 0.07 * dt; // dragged along...
-          b.y += w.y * 0.07 * dt;
-          b.vx += w.x * 0.22 * dt;
-          b.vy += w.y * 0.22 * dt;
+          b.x += w.x * 0.11 * dt; // dragged along...
+          b.y += w.y * 0.11 * dt;
+          b.vx += w.x * 0.34 * dt;
+          b.vy += w.y * 0.34 * dt;
           b.heading += (Math.random() - 0.5) * Math.min(1, w.strength / 800) * 0.6; // ...tumbling a little
           b.glideUntil = 0;
         }
         for (const d of dFlock.creatures) {
           const w = windAt(d.x, d.y);
           if (w.strength < 20) continue;
-          d.x += w.x * 0.03 * dt; // heavier: only nudged
-          d.y += w.y * 0.03 * dt;
-          d.vx += w.x * 0.1 * dt;
-          d.vy += w.y * 0.1 * dt;
+          d.x += w.x * 0.05 * dt; // heavier: nudged less
+          d.y += w.y * 0.05 * dt;
+          d.vx += w.x * 0.18 * dt;
+          d.vy += w.y * 0.18 * dt;
           if (d.mode === 'hover' && w.strength > 500 && Math.random() < dt * 3) {
             dragonflies.startle(d, w.x / w.strength, w.y / w.strength, 0.5, dFlock); // darts off downwind
           }
         }
+      }
+
+      // Wisps drift with the wind, curling a little, leaving a fading trail and a glow on the ground.
+      for (let i = wisps.length - 1; i >= 0; i--) {
+        const m = wisps[i];
+        const age = (t - m.born) / m.life;
+        if (age >= 1) {
+          wisps.splice(i, 1);
+          continue;
+        }
+        const w = windAt(m.x, m.y);
+        const speed = Math.hypot(m.vx, m.vy) || 1;
+        const curl = Math.sin(t * 2.6 + m.seed) * 60; // sideways wobble, so the streaks wave
+        m.vx += (w.x * 0.9 - (m.vy / speed) * curl) * dt;
+        m.vy += (w.y * 0.9 + (m.vx / speed) * curl) * dt;
+        const slow = Math.exp(-dt * 0.9);
+        m.vx *= slow;
+        m.vy *= slow;
+        m.x += m.vx * dt;
+        m.y += m.vy * dt;
+        m.trail.push(m.x, m.y);
+        if (m.trail.length > 20) m.trail.splice(0, 2); // keep the last 10 positions
+        grass.addAir(m.x, m.y, 0.09 * (1 - age) * m.strength, 2.2);
+      }
+
+      // The tree's canopy sways, more when the mouse's wind blows through it; a strong gust
+      // shakes a few leaves loose.
+      const treeWind = windAt(tree.x, tree.y);
+      swayTree(tree, t, dt, treeWind);
+      if (treeWind.strength > 300 && motes.length < 120 && Math.random() < dt * 10) {
+        const a = rand(0, TAU), r = rand(0, tree.span * 0.4);
+        motes.push({
+          x: tree.x + Math.cos(a) * r, y: tree.y + Math.sin(a) * r,
+          vx: treeWind.x * 0.2, vy: treeWind.y * 0.2,
+          born: t, life: rand(1.6, 2.8), seed: rand(0, 100), glyph: Math.random() < 0.5 ? "'" : ',', color: [96, 150, 66],
+        });
       }
 
       // Seed fluff and petals ride the wind, then drift and fade.
@@ -289,6 +340,7 @@ export function createMeadow({ density = 1, flowers: flowerAmount = 1, pond = tr
           shadows.push({ x: c.x + 26 * lift, y: c.y + 36 * lift, radius: c.span * 0.34, strength: 0.32 * (0.6 + 0.4 * c.depth) });
         }
       }
+      shadows.push(treeShadow(tree));
       grass.shadows = shadows;
       ground.step(dt);
     },
@@ -305,6 +357,7 @@ export function createMeadow({ density = 1, flowers: flowerAmount = 1, pond = tr
         renderer.tuning = tuning;
       }
       for (const f of flowers) drawFlower(f, pen);
+      drawTree(tree, pen); // over the koi and flowers, so its canopy hangs over the pond
       // All insects together, farthest first. Each kind uses its own look settings.
       const all = [];
       for (const [flock, animal] of kinds) for (const c of flock.creatures) all.push([c, animal, flock]);
@@ -314,8 +367,19 @@ export function createMeadow({ density = 1, flowers: flowerAmount = 1, pond = tr
         animal.draw(c, pen, flock);
       }
       renderer.tuning = tuning;
-      // Bits carried by the wind, fading as they go.
       const t = bFlock.time;
+      // Wind wisps: a trail of faint characters, the newest end brightest, all fading with age.
+      for (const m of wisps) {
+        const age = (t - m.born) / m.life;
+        const n = m.trail.length / 2;
+        for (let k = 1; k < n; k++) {
+          const x = m.trail[k * 2], y = m.trail[k * 2 + 1];
+          const along = k / n; // 0 at the oldest end, 1 at the newest
+          const glyph = k === n - 1 ? '~' : along > 0.35 ? lineGlyph(Math.atan2(y - m.trail[k * 2 - 1], x - m.trail[k * 2 - 2])) : '.';
+          pen.dot(x, y, glyph, WISP, 1, clamp(1 - along * (1 - age) * 0.85 * m.strength, 0.15, 1));
+        }
+      }
+      // Bits carried by the wind, fading as they go.
       for (const m of motes) pen.dot(m.x, m.y, m.glyph, m.color, 1, smoothstep(0.5, 1, (t - m.born) / m.life) * 0.9);
     },
 
@@ -342,7 +406,23 @@ export function createMeadow({ density = 1, flowers: flowerAmount = 1, pond = tr
         if (dist > 0.5) {
           gusts.push({ x0: lx, y0: ly, x1: x, y1: y, vx: clamp((x - lx) / dt, -2500, 2500), vy: clamp((y - ly) / dt, -2500, 2500), len: dist, born: bFlock.time });
           if (gusts.length > 120) gusts.shift();
-          grass.brush(lx, ly, x, y, clamp(speed / 3000, 0.05, 0.35), 3);
+          grass.brush(lx, ly, x, y, clamp(speed / 4500, 0.03, 0.22), 5); // wide and soft
+          // Wisps start anywhere across a wide band along the path, moving with it.
+          if (speed > 120 && wisps.length < 70) {
+            const n = speed > 1200 ? 3 : speed > 400 ? 2 : 1;
+            const ux = (x - lx) / dist, uy = (y - ly) / dist;
+            for (let i = 0; i < n; i++) {
+              const side = rand(-1, 1) * WIND_REACH * 0.75;
+              const sx = x - uy * side, sy = y + ux * side;
+              const k = rand(0.35, 0.6);
+              wisps.push({
+                x: sx, y: sy, vx: ((x - lx) / dt) * k, vy: ((y - ly) / dt) * k,
+                born: bFlock.time, life: rand(0.9, 1.6), seed: rand(0, 100),
+                strength: clamp(speed / 1200, 0.4, 1) * (1 - Math.abs(side) / WIND_REACH * 0.5),
+                trail: [sx, sy],
+              });
+            }
+          }
           if (water) water.disturbLine(lx, ly, x, y, clamp(speed / 20000, 0.008, 0.07), 1.1);
           // A quick movement kicks up a few bits of fluff and petals.
           if (speed > 250 && motes.length < 120) {
