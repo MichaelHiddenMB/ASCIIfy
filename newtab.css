@@ -73,7 +73,6 @@ body[data-scene="beach"] #clock {
 }
 
 #search {
-  position: relative; /* so the + corners are placed from the bar's edges */
   pointer-events: auto;
   display: flex;
   align-items: center;
@@ -82,35 +81,10 @@ body[data-scene="beach"] #clock {
   padding: 10px 14px;
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 4px;
 }
 
 #search:focus-within { border-color: var(--accent); }
-
-/* A + at each corner, like the settings box. The text box can't draw extra pieces, so the
-   form draws the top two and an empty span inside it (stretched over the whole bar) the
-   bottom two. */
-#search::before,
-#search::after,
-#search .corners::before,
-#search .corners::after {
-  content: "+";
-  position: absolute;
-  width: 1ch;
-  font: 13px var(--font);
-  line-height: 1;
-  text-align: center;
-  color: var(--accent);
-  background: var(--bg);
-}
-#search .corners {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-#search::before { top: -0.5em; left: -0.5ch; }
-#search::after { top: -0.5em; right: -0.5ch; }
-#search .corners::before { bottom: -0.5em; left: -0.5ch; }
-#search .corners::after { bottom: -0.5em; right: -0.5ch; }
 
 #search-input {
   flex: 1;
