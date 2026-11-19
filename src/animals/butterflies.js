@@ -1,4 +1,5 @@
-// Blue morpho butterflies, seen from above, wandering over the meadow and visiting flowers.
+// Butterflies (blue morphos, and orange monarchs for about 40% of them), seen from above,
+// wandering over the meadow and visiting flowers.
 // Adapted from ascii-animals by drewdi and Stephen Zhang (MIT, see
 // licenses/ascii-animals-LICENSE.txt). The original flies along one course across the
 // screen; here each butterfly wanders on its own, turns back before the edges, and now and
@@ -12,7 +13,7 @@
 // The flight: steer the way it wants to go, plus a little random flutter, a push forward on
 // every downstroke, and now and then a glide with the wings held flat.
 import { SHARED_TUNING } from '../engine/flock.js';
-import { INK_BODY, INK_DARK, INK_SHIMMER, INK_SPOT, ink } from '../engine/ink.js';
+import { INK_BODY, INK_DARK, INK_SCALE, INK_SHIMMER, INK_SPOT, ink } from '../engine/ink.js';
 import { angleDiff, clamp, frac, rand, TAU } from '../engine/math.js';
 import { noise1 } from '../engine/noise.js';
 
@@ -22,6 +23,11 @@ const FORE = { from: -0.3, to: 1.0, reach: 0.56, peak: 0.55, round: 0.5, scallop
 const HIND = { from: -1.45, to: 0.15, reach: 0.44, peak: 0.48, round: 0.42, scallop: 0.04 };
 const FORE_ROOT = 0.06; // where each wing pair joins the body (fraction of span ahead of centre)
 const HIND_ROOT = -0.02;
+// Monarchs have longer, more pointed forewings and rounder, smooth-edged hindwings.
+const M_FORE = { from: -0.25, to: 1.0, reach: 0.6, peak: 0.64, round: 0.65, scallop: 0 };
+const M_HIND = { from: -1.4, to: 0.15, reach: 0.42, peak: 0.45, round: 0.55, scallop: 0 };
+const MONARCHS = 0.4; // share of the butterflies that are monarchs
+const BLACK = [20, 15, 12];
 const BODY = [30, 30, 42];
 const FLAP_HZ = 2.6;
 const GLIDE = 0.35;
@@ -40,6 +46,27 @@ function bodyHalfWidth(u) {
   if (u > 0.11) return Math.sqrt(Math.max(0, 0.03 * 0.03 - (u - 0.14) ** 2));
   if (u > -0.04) return 0.034;
   return 0.03 * (1 - 0.6 * ((-0.04 - u) / 0.28));
+}
+
+// Monarch colouring for a point on a wing (t = position around the fan, r = how far out).
+// Orange with black veins, a black border dotted with white, and a black forewing tip
+// crossed by a band of pale spots.
+function monarchInk(out, part, t, r) {
+  if (r > 0.86) {
+    const row = r < 0.93 ? 0 : 1; // two rows of dots, offset from each other
+    const dot = r > 0.88 && r < 0.98 && Math.abs(frac(t * (part ? 8 : 10) + row * 0.5) - 0.5) < 0.13;
+    return dot ? ink(out, 246, 240, 228, INK_SPOT) : ink(out, ...BLACK, INK_DARK);
+  }
+  if (part === 0 && t > 0.9) return ink(out, ...BLACK, INK_DARK); // dark leading edge
+  if (part === 0 && t > 0.62 && r > 0.68) {
+    if (r < 0.82 && Math.abs(frac(t * 5) - 0.5) < 0.17) return ink(out, 250, 226, 190, INK_SPOT);
+    return ink(out, ...BLACK, INK_DARK);
+  }
+  // Veins fan out from the root; measuring the gap times r keeps them the same width all along.
+  const n = part ? 4 : 5;
+  const gap = (0.5 - Math.abs(frac(t * n) - 0.5)) / n;
+  if (r < 0.07 || gap * r < 0.006) return ink(out, 30, 18, 10, INK_DARK);
+  return ink(out, 196 + 50 * r, 86 + 52 * r, 12 + 14 * r, INK_SCALE);
 }
 
 const lobe = { t: 0, r: 0 };
@@ -106,6 +133,7 @@ export const butterflies = {
 
   create: (c) => ({
     ...c,
+    kind: Math.random() < MONARCHS ? 'monarch' : 'morpho',
     phase: rand(0, TAU),
     open: 1, // how flat the wings look from above: ~0.1 raised together, 1 spread open
     glide: 0,
@@ -242,6 +270,9 @@ export const butterflies = {
     // The body yaws a touch with each beat.
     const pose = { x: b.x, y: b.y, heading: b.heading + 0.06 * Math.sin(b.phase), span: S, depth: b.depth, id: b.id };
     const minBody = pen.cw * 0.4;
+    const monarch = b.kind === 'monarch';
+    const fore = monarch ? M_FORE : FORE;
+    const hind = monarch ? M_HIND : HIND;
 
     pen.shape(pose, 0.75, (u, v) => {
       const av = Math.abs(v);
@@ -249,10 +280,11 @@ export const butterflies = {
       if (bw > 0 && av * S <= Math.max(bw * S, minBody)) return ink(out, ...BODY, INK_BODY);
       const vw = av / open;
       let part;
-      if (inLobe(FORE, u - FORE_ROOT, vw)) part = 0;
-      else if (inLobe(HIND, u - HIND_ROOT, vw)) part = 1;
+      if (inLobe(fore, u - FORE_ROOT, vw)) part = 0;
+      else if (inLobe(hind, u - HIND_ROOT, vw)) part = 1;
       else return false;
       const { t, r } = lobe;
+      if (monarch) return monarchInk(out, part, t, r);
       // Black margin with white spots on the forewing, dark roots and leading edge, shimmering blue.
       if (r > 0.86) {
         if (part === 0 && r < 0.95 && Math.abs(frac(t * 5) - 0.5) < 0.14) ink(out, 236, 240, 255, INK_SPOT);
