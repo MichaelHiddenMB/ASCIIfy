@@ -11,8 +11,20 @@
 //   - starfish: five tapering arms that curl a little, covered in pale bumps
 // They're placed once when the window changes size, mostly on the damp sand the waves reach
 // and along the line of washed-up seaweed, where shells really end up.
+//
+// WHEN A WAVE RUNS OVER ONE:
+//   - It's covered. Each point of the shell that the water has reached is tinted toward the
+//     color of the water there (more where the water is deeper), and where the foam is thick,
+//     the foam hides that part of the shell completely, so the frothy edge of the wave is
+//     seen washing across it.
+//   - It sways. The shore says how fast the water's edge is moving, which is which way the
+//     water is flowing: up the beach as a wave rushes in, back down as it drains. A shell
+//     under water is dragged by that flow, wobbles in the swirl and rocks a little, while a
+//     spring (the grip of the sand) pulls it back to where it was lying. Light shells move
+//     most; starfish cling on and barely slide, but their arms curl and wave.
 import { INK_DARK, INK_SCALE, INK_SPOT, ink } from '../engine/ink.js';
 import { clamp, frac, hash3, rand, TAU } from '../engine/math.js';
+import { noise1 } from '../engine/noise.js';
 import { lineGlyph } from '../engine/renderer.js';
 
 const SCALLOP = [[242, 150, 108], [236, 116, 118], [248, 244, 236], [206, 146, 216]];
@@ -29,6 +41,8 @@ const STARFISH = [[240, 120, 52], [222, 62, 58], [162, 84, 186], [226, 160, 84]]
 // Which kinds turn up, and how often.
 const KINDS = [['scallop', 0.27], ['snail', 0.2], ['conch', 0.14], ['dollar', 0.14], ['starfish', 0.25]];
 const COLORS = { scallop: SCALLOP, snail: SNAIL, conch: CONCH, dollar: DOLLAR, starfish: STARFISH };
+// How easily the moving water shifts each kind (starfish cling on).
+const LOOSE = { scallop: 1, snail: 0.8, conch: 0.5, dollar: 1, starfish: 0.3 };
 const SIZES = { scallop: [92, 110], snail: [100, 118], conch: [124, 144], dollar: [100, 114], starfish: [104, 128] };
 function pickKind() {
   let x = Math.random();
@@ -42,7 +56,29 @@ let nextId = 70000;
 // One shell of the given kind (a random kind if none), at (x, y).
 export function makeShell(x, y, kind = pickKind(), scale = 1, heading = rand(0, TAU)) {
   const [lo, hi] = SIZES[kind];
-  return { x, y, kind, span: rand(lo, hi) * scale, color: pick(COLORS[kind]), heading, curl: rand(-0.6, 0.6), depth: 1, id: nextId++ };
+  return {
+    x, y, kind, span: rand(lo, hi) * scale, color: pick(COLORS[kind]), heading, curl: rand(-0.6, 0.6), depth: 1, id: nextId++,
+    ox: 0, oy: 0, rot: 0, vx: 0, vy: 0, vr: 0, // how far the water has pushed and turned it, and how fast
+    wet: 0, // how much of it is under water (smoothed), 0 to 1
+    spin: Math.random() < 0.5 ? -1 : 1, // which way the flow tends to turn it
+  };
+}
+
+// Moves the shells with the water washing over them (see the note at the top).
+export function stepShells(shells, shore, t, dt) {
+  for (const s of shells) {
+    const covered = clamp((s.x + s.ox - shore.waterline(s.y)) / (s.span * 0.5) + 0.5, 0, 1);
+    s.wet += (covered - s.wet) * Math.min(1, dt * 6);
+    const loose = LOOSE[s.kind];
+    const flow = shore.flowAt(s.y) * s.wet;
+    const swirl = (noise1(t * 2.5 + s.id * 3.1) - 0.5) * 90 * s.wet;
+    s.vx += (flow * 2.2 * loose - s.ox * 9 - s.vx * 4) * dt;
+    s.vy += (swirl * loose - s.oy * 9 - s.vy * 4) * dt;
+    s.vr += ((Math.abs(flow) * 0.02 + Math.abs(swirl) * 0.004) * s.spin * loose - s.rot * 7 - s.vr * 3) * dt;
+    s.ox = clamp(s.ox + s.vx * dt, -s.span * 0.15, s.span * 0.15);
+    s.oy = clamp(s.oy + s.vy * dt, -s.span * 0.1, s.span * 0.1);
+    s.rot = clamp(s.rot + s.vr * dt, -0.4, 0.4);
+  }
 }
 
 export function placeShells(shore, w, h) {
@@ -50,28 +86,55 @@ export function placeShells(shore, w, h) {
   const beach = (w - shore.seaWidth) * h; // roughly how much sand there is
   const want = Math.round(clamp(beach / 32000, 4, 12));
   const scale = clamp(Math.min(w, h) / 900, 0.8, 1.2);
+  const R = shore.runup;
   for (let tries = 0; tries < want * 60 && shells.length < want; tries++) {
-    const x = rand(30, w - 30), y = rand(30, h - 30);
-    const d = shore.distance(x, y);
-    // Mostly on damp sand and along the seaweed line; a few further up the beach.
-    const damp = d < -18 && d > -shore.runup * 2.1;
-    if (d > -18 || (!damp && Math.random() > 0.08)) continue;
+    const s = makeShell(0, rand(40, h - 40), pickKind(), scale);
+    // About half where the waves reach, most of the rest on the damp sand and along the
+    // seaweed line, and a few further up the beach. Never so close that it's always wet.
+    const zone = Math.random();
+    const nearest = s.span * 0.45 + 6;
+    const d = zone < 0.5 ? -rand(nearest, Math.max(nearest + 10, R * 1.05)) : zone < 0.9 ? -rand(R * 1.05, R * 2.1) : -rand(R * 2.1, R * 4);
+    const y = s.y;
+    const x = s.x = -shore.distance(0, y) + d; // the average waterline on this row, plus d
+    if (x < s.span * 0.5) continue;
     if (Math.abs(x - w / 2) < 330 && Math.abs(y - (h * 0.5 - 40)) < 170) continue; // clear of the clock
-    const s = makeShell(x, y, pickKind(), scale);
     if (shells.some((o) => Math.hypot(o.x - x, o.y - y) < (o.span + s.span) * 0.72)) continue;
     shells.push(s);
   }
   return shells;
 }
 
-export function drawShells(shells, pen) {
-  for (const s of shells) drawShell(s, pen);
+export function drawShells(shells, pen, shore = null) {
+  for (const s of shells) drawShell(s, pen, shore);
 }
 
-export function drawShell(s, pen) {
+export function drawShell(s, pen, shore = null) {
   const out = pen.ink;
-  const [reach, sampler] = SAMPLERS[s.kind](s, out);
-  pen.shape(s, reach, sampler, { fog: 0 });
+  const pose = { x: s.x + s.ox, y: s.y + s.oy, heading: s.heading + s.rot, span: s.span, depth: 1, id: s.id };
+  // Starfish arms wave about while the water is over them.
+  s.curlNow = s.curl + 0.45 * s.wet * Math.sin(pen.t * 3.2 + s.id);
+  const [reach, inner] = SAMPLERS[s.kind]({ ...s, heading: pose.heading, curl: s.curlNow }, out);
+  let sampler = inner;
+  if (shore && s.wet > 0.001 && shore.cols === pen.cols) {
+    // Under the water: tinted by it, and hidden where the foam is thick.
+    const { baseline, edge, rgba, foam, cols } = shore;
+    sampler = (u, v, px, py) => {
+      if (!inner(u, v, px, py)) return false;
+      const i = pen.cellIndex(px, py);
+      if (i < 0) return true;
+      const r = (i / cols) | 0;
+      const under = px - baseline[r] - edge[r]; // how far past the water's edge this point is
+      if (under <= 0) return true;
+      if (foam[i] > 0.5) return false;
+      const m = Math.min(0.85, 0.25 + 0.35 * Math.min(1, under / 40) + 0.5 * foam[i]);
+      const o = i * 4;
+      out.r += (rgba[o] - out.r) * m;
+      out.g += (rgba[o + 1] - out.g) * m;
+      out.b += (rgba[o + 2] - out.b) * m;
+      return true;
+    };
+  }
+  pen.shape(pose, reach, sampler, { fog: 0 });
 }
 
 // Each sampler factory returns [how far the shape reaches, the sampler].

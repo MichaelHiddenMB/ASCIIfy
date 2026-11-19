@@ -92,6 +92,8 @@ export class Shore {
     this.edge = new Float32Array(rows); // where the water's edge is right now (as a d)
     this.wet = new Float32Array(rows); // how far up the sand is still wet (as a d)
     this.rushing = new Uint8Array(rows); // 1 while a wave is running up the sand on that row
+    this.flow = new Float32Array(rows); // how fast the water's edge is moving (px/s): negative = rushing up the beach
+    this.foam = new Float32Array(n); // how foamy each cell is this frame (0 on dry sand)
 
     // The beach curves gently: a long bend plus small wobbles.
     const a = hash3(seed, 1, 1) * 6.28, b = hash3(seed, 2, 1) * 6.28;
@@ -153,6 +155,12 @@ export class Shore {
     return this.baseline[r] + this.edge[r];
   }
 
+  // How fast the water at the edge is flowing on the row at y, in px/s: negative while a wave
+  // rushes up the beach, positive as it drains back.
+  flowAt(y) {
+    return this.flow[clamp(Math.floor(y / this.ch), 0, this.rows - 1)];
+  }
+
   // Is a wave rushing up the sand on the row at y right now?
   waveRushing(y) {
     return this.rushing[clamp(Math.floor(y / this.ch), 0, this.rows - 1)] === 1;
@@ -192,6 +200,7 @@ export class Shore {
       if (p < rise) e = back - (R + back) * (1 - (1 - p / rise) ** 2);
       else if (p < 0.9) e = -R + (R + back) * smoothstep(0, 1, (p - rise) / (0.9 - rise));
       else e = back;
+      if (dt > 0) this.flow[r] += ((e - edge[r]) / dt - this.flow[r]) * Math.min(1, dt * 10);
       edge[r] = e;
       this.rushing[r] = p < rise ? 1 : 0;
       // Wet sand: as far as the water has reached, drying back slowly.
@@ -216,6 +225,7 @@ export class Shore {
           if (damp > 0) mixInto(col, col, DAMP, damp);
           if (soaked > 0) mixInto(col, col, WET, soaked);
           rgba[o] = col[0]; rgba[o + 1] = col[1]; rgba[o + 2] = col[2]; rgba[o + 3] = 255;
+          this.foam[i] = 0;
           refX[i] = 0;
           refY[i] = 0;
           if (soaked > 0.75 && hash3(c, r, (t * 0.8) | 0) < 0.04) {
@@ -319,6 +329,7 @@ export class Shore {
           mixInto(col, tmp, col, 0.2 + 0.8 * smoothstep(0, 60, d - e));
         }
         if (foam > 0) mixInto(col, col, FOAM, Math.min(0.95, foam));
+        this.foam[i] = foam;
         rgba[o] = col[0]; rgba[o + 1] = col[1]; rgba[o + 2] = col[2]; rgba[o + 3] = 255;
 
         // Refraction: things underwater appear shifted where the surface tilts.

@@ -3,7 +3,8 @@
 // Same scene shape as koi-pond.js (see the list of what a scene provides at the top of that file).
 //
 // The ground (shore.js) does the sand, the sea and the waves, and shows the reef (reef.js)
-// on the sea floor. Shells and starfish (shells.js) lie on the sand.
+// on the sea floor. Shells and starfish (shells.js) lie on the sand; the waves wash over them
+// and rock them about.
 //
 // In the sea, schools of tropical fish swim over the reef (clownfish each keep to an anemone),
 // jellyfish pulse slowly through the open water beyond it, and sea turtles row by, rising now
@@ -22,7 +23,7 @@ import { Flock } from '../engine/flock.js';
 import { Shore } from '../engine/shore.js';
 import { clamp, rand } from '../engine/math.js';
 import { buildReef, drawReef } from './reef.js';
-import { drawShells, placeShells } from './shells.js';
+import { drawShells, placeShells, stepShells } from './shells.js';
 import { crabs } from '../animals/crabs.js';
 import { jellyfish } from '../animals/jellyfish.js';
 import { tropicalFish } from '../animals/tropical-fish.js';
@@ -190,6 +191,7 @@ export function createBeach({ density = 1 } = {}) {
           if (c.breathing) water.disturb(c.x + Math.cos(c.heading) * c.span * 0.4, c.y + Math.sin(c.heading) * c.span * 0.4, 0.7, 1.3);
         }
       }
+      stepShells(shells, shore, crabFlock.time, dt);
       shore.step(dt);
     },
 
@@ -209,7 +211,7 @@ export function createBeach({ density = 1 } = {}) {
       pen.refract = false;
       renderer.tuning = tuning;
 
-      drawShells(shells, pen);
+      drawShells(shells, pen, shore);
 
       // Footprints under the water are washed away.
       const { energy, cols, rows, cw } = renderer;
