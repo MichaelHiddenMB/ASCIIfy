@@ -8,7 +8,15 @@
 //   3. a faint grid of cell lines (painted once, then copied each frame)
 //   4. the "trail": a field of energy that animals leave behind, which spreads out and
 //      fades, drawn as tiny dots
-//   5. the animals, through a Pen.
+//   5. the animals, through a Pen
+//   6. an optional layer the scene paints straight onto the canvas (scene.overlay), e.g. the
+//      meadow's fireflies
+//
+// A scene can also "grade" the picture (scene.grade): a per-cell color adjustment, like a
+// photo filter, applied to every color just before it's drawn. Each cell gets a multiplier
+// for red, green and blue (to tint and dim) and a glow amount (to brighten, the way light
+// blends in a "screen" mode). The meadow's sunset uses it. Doing this per cell is far cheaper
+// than painting see-through layers over the whole screen.
 //
 // How animals become characters: an animal is a SHAPE, a function that answers "is this
 // point inside me, and what color is it?" For every cell near the animal, the renderer asks
@@ -248,11 +256,14 @@ export class Renderer {
     this.diffuse(dt);
 
     this.cellFlag.fill(CELL_NONE);
+    this.grade = null;
     // Only use the ground if it's sized for the current grid (it's resized just after us).
     const ground = this.ground && this.ground.cols === cols && this.ground.rows === this.rows ? this.ground : null;
     if (ground) {
       // Ground characters go in first, at the lowest priority, so everything covers them.
       ground.surface(scene.time, this.width, this.height);
+      this.grade = scene.grade ? scene.grade(cols, this.rows, this.width, this.height) : null;
+      if (this.grade) this.gradeImage(ground.rgba);
       const { glyph, glyphColor } = ground;
       for (let i = 0; i < glyph.length; i++) {
         if (!glyph[i]) continue;
@@ -284,6 +295,42 @@ export class Renderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     this.drawCells();
+    if (scene.overlay) {
+      ctx.save();
+      scene.overlay(ctx, this);
+      ctx.restore();
+    }
+  }
+
+  // ---- grading (see the note at the top) ----
+
+  // Applies the grade to a color for cell i. `round` snaps the result to steps of 10, so ground
+  // characters can still be drawn in batches of the same color.
+  graded(c, i, round = false) {
+    const { mul, add } = this.grade;
+    const k = i * 3;
+    let r = (c >>> 16) * mul[k], g = ((c >>> 8) & 255) * mul[k + 1], b = (c & 255) * mul[k + 2];
+    r += add[k] * (255 - r);
+    g += add[k + 1] * (255 - g);
+    b += add[k + 2] * (255 - b);
+    if (round) {
+      r = Math.round(r / 10) * 10;
+      g = Math.round(g / 10) * 10;
+      b = Math.round(b / 10) * 10;
+    }
+    return pack(r, g, b);
+  }
+
+  gradeImage(rgba) {
+    const { mul, add } = this.grade;
+    const n = Math.min(rgba.length / 4, mul.length / 3);
+    for (let i = 0; i < n; i++) {
+      const o = i * 4, k = i * 3;
+      for (let j = 0; j < 3; j++) {
+        const v = rgba[o + j] * mul[k + j];
+        rgba[o + j] = v + add[k + j] * (255 - v);
+      }
+    }
   }
 
   // ---- the trail (ripples) ----
@@ -545,10 +592,11 @@ export class Renderer {
 
     // Ground characters (water, grass) can fill half the screen, so they're drawn grouped by
     // color: setting the color once per group is much faster than once per character.
+    const graded = this.grade ? (c, i, round) => this.graded(c, i, round) : (c) => c;
     const groups = new Map();
     for (let i = 0; i < n; i++) {
       if (cellFlag[i] !== CELL_BACK) continue;
-      const g = cellColor[i];
+      const g = graded(cellColor[i], i, true);
       let list = groups.get(g);
       if (!list) groups.set(g, (list = []));
       list.push(i);
@@ -564,11 +612,11 @@ export class Renderer {
       const x = (i % cols) * cw;
       const y = ((i / cols) | 0) * ch;
       if (flag === CELL_SOLID) {
-        const f = cellFill[i];
+        const f = graded(cellFill[i], i);
         ctx.fillStyle = rgb(f >>> 16, (f >>> 8) & 255, f & 255);
         ctx.fillRect(x + 1, y + 1, cw - 1, ch - 1);
       }
-      const g = cellColor[i];
+      const g = graded(cellColor[i], i);
       ctx.fillStyle = rgb(g >>> 16, (g >>> 8) & 255, g & 255);
       ctx.fillText(String.fromCharCode(cellGlyph[i]), x + cw / 2, y + ch / 2 + 1);
     }
