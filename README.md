@@ -26,7 +26,19 @@ click the reload icon on the extension's card in `chrome://extensions` first.
 - The **animals** slider sets how many koi there are, **speed** how fast everything moves,
   and **text size** how big the ASCII cells are.
 
+## The meadow
+- A grassy field seen from above, with patches of lush and dry grass, drifts of tiny
+  wildflowers, and clusters of daisies, poppies, cornflowers and buttercups.
+- Wind gusts roll across the grass in waves of light.
+- Blue morpho butterflies wander, flutter and glide, and now and then land on a flower to rest
+  with their wings slowly opening and closing. Emerald dragonflies hover, then dart.
+- Every insect casts a soft shadow on the grass.
+- **Move the mouse** to brush through the grass. Butterflies resting nearby take off, and
+  hovering dragonflies dart away. **Click** to puff the grass and startle everything near it.
+
+Switch between themes, and set how many flowers or lily pads there are, in the settings panel.
+
 ## Credits
-The renderer, flock and koi are adapted from
+The renderer, flock, koi, butterflies and dragonflies are adapted from
 [ascii-animals](https://github.com/DesignerStephen1/ascii-animals) by drewdi and Stephen Zhang,
 used under the MIT License (see `licenses/ascii-animals-LICENSE.txt`).
