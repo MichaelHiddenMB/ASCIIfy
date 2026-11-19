@@ -41,6 +41,10 @@ const FOAM = [236, 244, 242];
 const GLITTER = [250, 252, 240];
 const GRAINS = ['.', ',', '`', "'", '.', ':'];
 
+// The reef (if the scene gives the shore one, see scenes/reef.js) marks cells that sway with
+// the water, so their characters are picked fresh every frame.
+export const REEF_STILL = 1, REEF_GRASS = 2, REEF_ANEMONE = 3;
+
 const q = (v) => clamp(Math.round(v / 10) * 10, 0, 250);
 const pack = (r, g, b) => (q(r) << 16) | (q(g) << 8) | q(b);
 const mixInto = (out, a, b, t) => {
@@ -266,6 +270,28 @@ export class Shore {
         const gy = (h[i + cols < h.length ? i + cols : i] - h[i >= cols ? i - cols : i]) * 0.5 * aspect;
         const ripple = Math.hypot(gx - swellSlope * cw, gy);
 
+        // The reef on the sea floor, seen through the water: shifted a little where the
+        // surface tilts (so it wobbles as waves pass), and hazier the deeper it is.
+        let reefGlyph = 0, haze = 0, rj = 0;
+        const reef = this.reef;
+        if (reef) {
+          const rc = clamp(c + Math.round(gx * 1.6), 0, cols - 1);
+          const rr = clamp(r + Math.round(gy * 1.6), 0, rows - 1);
+          rj = rr * cols + rc;
+          const cover = reef.cover[rj];
+          if (cover > 0) {
+            haze = 0.12 + 0.62 * f;
+            const vis = cover * (1 - haze);
+            col[0] += (reef.color[rj * 3] - col[0]) * vis;
+            col[1] += (reef.color[rj * 3 + 1] - col[1]) * vis;
+            col[2] += (reef.color[rj * 3 + 2] - col[2]) * vis;
+            const kind = reef.kind[rj];
+            if (kind === REEF_GRASS) reefGlyph = lineGlyph(Math.PI / 2 + 0.55 * Math.sin(t * 1.3 + rc * 0.35 + rr * 0.12) + swellSlope * 25).charCodeAt(0);
+            else if (kind === REEF_ANEMONE) reefGlyph = lineGlyph(reef.angle[rj] + 0.5 * Math.sin(t * 2.1 + reef.angle[rj] * 3 + rc)).charCodeAt(0);
+            else reefGlyph = reef.glyph[rj];
+          }
+        }
+
         // Light: crests brighter, the faces in front of them darker, a slow shimmer, and in
         // the shallows a web of light (caustics) on the bottom.
         let bright = 0.94 + 0.12 * height * ampHere - gx * 0.6 - gy * 0.4;
@@ -299,6 +325,10 @@ export class Shore {
         } else if (ripple > 0.12) {
           glyph[i] = lineGlyph(Math.atan2(gy, gx - swellSlope * cw) + Math.PI / 2).charCodeAt(0);
           glyphColor[i] = pack(col[0] * 1.3 + 40, col[1] * 1.3 + 50, col[2] * 1.3 + 50);
+        } else if (reefGlyph) {
+          const g = reef.glyphColor, k3 = rj * 3, m = haze * 0.85;
+          glyphColor[i] = pack(g[k3] + (col[0] - g[k3]) * m, g[k3 + 1] + (col[1] - g[k3 + 1]) * m, g[k3 + 2] + (col[2] - g[k3 + 2]) * m);
+          glyph[i] = reefGlyph;
         } else if (height > 0.6 && ampHere > 0.45 && hash3(c, r, n + k) < 0.55) {
           glyph[i] = (hash3(c, r, 5) < 0.6 ? '~' : '-').charCodeAt(0); // the crest line
           glyphColor[i] = pack(col[0] * 1.25 + 30, col[1] * 1.25 + 34, col[2] * 1.2 + 34);

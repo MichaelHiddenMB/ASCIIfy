@@ -130,6 +130,16 @@ export class Pen {
   cellIndex(x, y) {
     return this.r.cellIndex(x, y);
   }
+
+  // Sets cell i straight to a solid block: `fill` and `color` are packed 0xRRGGBB colors.
+  // For scenery that's worked out ahead of time (the beach's coral), not moving animals.
+  cell(i, glyph, color, fill) {
+    const r = this.r;
+    r.cellFlag[i] = CELL_SOLID;
+    r.cellFill[i] = fill;
+    r.cellColor[i] = color;
+    r.cellGlyph[i] = glyph;
+  }
 }
 
 export class Renderer {
