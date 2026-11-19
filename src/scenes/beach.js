@@ -7,7 +7,9 @@
 //
 // In the sea, schools of tropical fish swim over the reef (clownfish each keep to an anemone),
 // jellyfish pulse slowly through the open water beyond it, and sea turtles row by, rising now
-// and then to breathe (which ripples the surface). Sea creatures
+// and then to breathe (which ripples the surface). Rays glide low over the sea floor:
+// blue-spotted stingrays rippling their discs (and sometimes resting on the bottom), and
+// spotted eagle rays flapping like birds. Sea creatures
 // are drawn farthest (deepest) first and bent by the water's surface, like the pond's koi.
 //
 // On the beach, a couple of crabs scuttle about. They stay on the sand, keeping fairly close
@@ -25,6 +27,7 @@ import { crabs } from '../animals/crabs.js';
 import { jellyfish } from '../animals/jellyfish.js';
 import { tropicalFish } from '../animals/tropical-fish.js';
 import { turtles } from '../animals/turtles.js';
+import { stingrays } from '../animals/stingrays.js';
 
 const PALETTE = {
   background: [12, 56, 104], // the deep sea (far-off sea creatures fade toward this)
@@ -38,6 +41,7 @@ const CRABS = 2;
 const JELLIES = 4;
 const FISH = 22;
 const TURTLES = 2;
+const RAYS = 2;
 
 export function createBeach({ density = 1 } = {}) {
   const tuning = { fog: 0.6, shimmer: 0.3, sparkle: 0.1, trail: 0, trailFade: 0.4, grid: 1 };
@@ -55,10 +59,12 @@ export function createBeach({ density = 1 } = {}) {
   const jellyTuning = { ...jellyfish.defaults, fog: 0.5 };
   const fishTuning = { ...tropicalFish.defaults };
   const turtleTuning = { ...turtles.defaults };
+  const rayTuning = { ...stingrays.defaults };
   const sea = [
     { animal: jellyfish, tuning: jellyTuning, flock: new Flock(jellyfish, jellyTuning, Math.round(JELLIES * density)), per: JELLIES, out: 0.5, upTo: 1 },
     { animal: tropicalFish, tuning: fishTuning, flock: new Flock(tropicalFish, fishTuning, Math.round(FISH * density)), per: FISH, out: 0.12, upTo: 0.8 },
     { animal: turtles, tuning: turtleTuning, flock: new Flock(turtles, turtleTuning, Math.round(TURTLES * density)), per: TURTLES, out: 0.2, upTo: 1 },
+    { animal: stingrays, tuning: rayTuning, flock: new Flock(stingrays, rayTuning, Math.round(RAYS * density)), per: RAYS, out: 0.15, upTo: 1 },
   ];
   for (const kind of sea) kind.flock.keepIn = (c) => seaBounds(c, kind);
 

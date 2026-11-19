@@ -106,6 +106,12 @@ export class Pen {
     this.r.line(x0, y0, x1, y1, color, fog, tip);
   }
 
+  // Like line(), but it also shows over solid things (a ray's tail crossing coral): where a
+  // cell is already solid, the cell is repainted solid, in `fill` with the line's character.
+  lineOver(x0, y0, x1, y1, color, fill, depth, tip) {
+    this.r.lineOver(x0, y0, x1, y1, color, fill, this.fogFor(depth), tip);
+  }
+
   lineBody(p, u0, v0, u1, v1, color, tip) {
     const a = this.toWorld(p, u0, v0, this._a);
     const b = this.toWorld(p, u1, v1, this._b);
@@ -563,6 +569,25 @@ export class Renderer {
       const i = this.cellIndex(x0 + ((x1 - x0) * s) / steps, y0 + ((y1 - y0) * s) / steps);
       if (i < 0 || cellFlag[i] === CELL_SOLID) continue;
       cellFlag[i] = CELL_SOFT;
+      cellColor[i] = packed;
+      cellGlyph[i] = glyph;
+      last = i;
+    }
+    if (tip && last >= 0) cellGlyph[last] = tip.charCodeAt(0);
+  }
+
+  lineOver(x0, y0, x1, y1, color, fill, fog, tip) {
+    const { cellFlag, cellFill, cellColor, cellGlyph, cw } = this;
+    const packed = this.fade(color[0], color[1], color[2], fog);
+    const packedFill = this.fade(fill[0], fill[1], fill[2], fog);
+    const glyph = lineGlyph(Math.atan2(y1 - y0, x1 - x0)).charCodeAt(0);
+    const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (cw * 0.5)));
+    let last = -1;
+    for (let s = 1; s <= steps; s++) {
+      const i = this.cellIndex(x0 + ((x1 - x0) * s) / steps, y0 + ((y1 - y0) * s) / steps);
+      if (i < 0) continue;
+      if (cellFlag[i] === CELL_SOLID) cellFill[i] = packedFill;
+      else cellFlag[i] = CELL_SOFT;
       cellColor[i] = packed;
       cellGlyph[i] = glyph;
       last = i;
