@@ -6,7 +6,8 @@
 // on the sea floor. Shells and starfish (shells.js) lie on the sand.
 //
 // In the sea, schools of tropical fish swim over the reef (clownfish each keep to an anemone),
-// and jellyfish pulse slowly through the open water beyond it. Sea creatures
+// jellyfish pulse slowly through the open water beyond it, and sea turtles row by, rising now
+// and then to breathe (which ripples the surface). Sea creatures
 // are drawn farthest (deepest) first and bent by the water's surface, like the pond's koi.
 //
 // On the beach, a couple of crabs scuttle about. They stay on the sand, keeping fairly close
@@ -23,6 +24,7 @@ import { drawShells, placeShells } from './shells.js';
 import { crabs } from '../animals/crabs.js';
 import { jellyfish } from '../animals/jellyfish.js';
 import { tropicalFish } from '../animals/tropical-fish.js';
+import { turtles } from '../animals/turtles.js';
 
 const PALETTE = {
   background: [12, 56, 104], // the deep sea (far-off sea creatures fade toward this)
@@ -35,6 +37,7 @@ const PALETTE = {
 const CRABS = 2;
 const JELLIES = 4;
 const FISH = 22;
+const TURTLES = 2;
 
 export function createBeach({ density = 1 } = {}) {
   const tuning = { fog: 0.6, shimmer: 0.3, sparkle: 0.1, trail: 0, trailFade: 0.4, grid: 1 };
@@ -51,14 +54,16 @@ export function createBeach({ density = 1 } = {}) {
   // sea's width) beyond the average waterline, and away from the screen's edges.
   const jellyTuning = { ...jellyfish.defaults, fog: 0.5 };
   const fishTuning = { ...tropicalFish.defaults };
+  const turtleTuning = { ...turtles.defaults };
   const sea = [
     { animal: jellyfish, tuning: jellyTuning, flock: new Flock(jellyfish, jellyTuning, Math.round(JELLIES * density)), per: JELLIES, out: 0.5, upTo: 1 },
     { animal: tropicalFish, tuning: fishTuning, flock: new Flock(tropicalFish, fishTuning, Math.round(FISH * density)), per: FISH, out: 0.12, upTo: 0.8 },
+    { animal: turtles, tuning: turtleTuning, flock: new Flock(turtles, turtleTuning, Math.round(TURTLES * density)), per: TURTLES, out: 0.2, upTo: 1 },
   ];
   for (const kind of sea) kind.flock.keepIn = (c) => seaBounds(c, kind);
 
   function seaBounds(c, { out, upTo }) {
-    const m = Math.max(50, c.span * 0.5);
+    const m = Math.max(50, c.span * 0.6);
     const base = c.x - shore.distance(c.x, c.y);
     const left = base + Math.max(shore.breakAt * 1.8, shore.seaWidth * out), right = Math.min(size.w - m, base + shore.seaWidth * upTo);
     const ix = c.x < left ? (left - c.x) / 80 : c.x > right ? -(c.x - right) / m : 0;
@@ -133,6 +138,8 @@ export function createBeach({ density = 1 } = {}) {
         // Newcomers (and any that got lost) start out in open water.
         for (const c of kind.flock.creatures) {
           if (c.y < -c.span || c.y > size.h + c.span || c.x > size.w + c.span || shore.distance(c.x, c.y) < 0) placeInSea(c, kind);
+          // A turtle taking a breath at the surface leaves a ripple by its head.
+          if (c.breathing) water.disturb(c.x + Math.cos(c.heading) * c.span * 0.4, c.y + Math.sin(c.heading) * c.span * 0.4, 0.7, 1.3);
         }
       }
       shore.step(dt);
