@@ -18,6 +18,13 @@
   <!-- The animated scene is painted onto this canvas, which sits behind everything else. -->
   <canvas id="scene" aria-hidden="true"></canvas>
 
+  <!-- Our own bookmarks bar (Chrome hides its own on extension new tab pages): src/ui/bookmarks.js -->
+  <nav id="bookmarks" aria-label="Bookmarks" hidden>
+    <div class="bm-items"></div>
+    <button class="bm bm-more" type="button" aria-label="More bookmarks" aria-haspopup="menu" aria-expanded="false" hidden>&raquo;</button>
+    <div class="bm-other"></div>
+  </nav>
+
   <!-- Normal page elements layered on top of the canvas. -->
   <main id="overlay">
     <section id="clock">
@@ -62,6 +69,7 @@
       <label class="check"><input type="checkbox" name="showClock"> show clock</label>
       <label class="check"><input type="checkbox" name="clock24"> 24-hour clock</label>
       <label class="check"><input type="checkbox" name="showSearch"> show search bar</label>
+      <label class="check"><input type="checkbox" name="showBookmarks"> show bookmarks bar</label>
       <label class="check" data-scene="koi-pond"><input type="checkbox" name="light"> moonlight on the water</label>
       <label class="check" data-scene="meadow"><input type="checkbox" name="meadowPond"> pond and tree</label>
       <label class="check" data-scene="meadow"><input type="checkbox" name="sunset"> sunset</label>

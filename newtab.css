@@ -107,6 +107,127 @@ body[data-scene="beach"] #clock {
 
 #search-input::placeholder { color: color-mix(in srgb, var(--text) 45%, transparent); }
 
+/* ---------- bookmarks bar ----------
+   A thin see-through strip along the top, laid out like Chrome's own bookmarks bar: rounded
+   "pill" buttons with the site's icon and name, and folders that drop down into menus drawn
+   as boxes like the settings panel. (src/ui/bookmarks.js builds it.) */
+
+#bookmarks {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 8px;
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  font: 12px var(--font);
+}
+
+#bookmarks .bm-items {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#bookmarks .bm-other:not(:empty) {
+  padding-left: 6px;
+  border-left: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.bm,
+.bm-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: color-mix(in srgb, var(--text) 88%, transparent);
+  background: none;
+  border: none;
+  font: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.bm {
+  flex: none;
+  height: 24px;
+  max-width: 24ch;
+  padding: 0 9px;
+  border-radius: 12px;
+}
+.bm.icon-only { padding: 0 6px; }
+.bm:hover,
+.bm.open,
+.bm:focus-visible {
+  outline: none;
+  color: #fff;
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+}
+.bm-more { color: var(--accent); font-size: 14px; }
+
+.bm-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bm svg,
+.bm-row svg,
+.bm-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.bm svg,
+.bm-row svg { color: var(--accent); }
+.bm .bm-globe,
+.bm-row .bm-globe { color: color-mix(in srgb, var(--text) 60%, transparent); }
+
+.bm-dead { opacity: 0.55; cursor: default; }
+
+/* A folder's menu: a box with a thin accent line, like the settings panel. */
+.bm-menu {
+  position: fixed;
+  z-index: 3;
+  min-width: 22ch;
+  max-width: 44ch;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 5px 0;
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  font: 12px var(--font);
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent) 60%, transparent) transparent;
+}
+
+.bm-row {
+  width: 100%;
+  height: 28px;
+  padding: 0 12px;
+  text-align: left;
+}
+.bm-row .bm-label { flex: 1; }
+.bm-row:hover,
+.bm-row.open,
+.bm-row:focus-visible {
+  outline: none;
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.bm-arrow { color: var(--accent); }
+
+.bm-empty {
+  padding: 4px 12px;
+  color: color-mix(in srgb, var(--text) 45%, transparent);
+}
+
 /* ---------- settings ----------
    Styled like a box drawn in text: thin lines with + at the corners, the title set into the
    top line like +--[ settings ]---+, sliders drawn as [######------], checkboxes as [x], and

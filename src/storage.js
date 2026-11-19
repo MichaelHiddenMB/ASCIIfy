@@ -18,6 +18,7 @@ export const DEFAULTS = {
   name: '',
   showClock: true,
   showSearch: true,
+  showBookmarks: true, // our own bookmarks bar along the top (see src/ui/bookmarks.js)
   light: true, // the moonlight reflection on the water
   clock24: false,
 };

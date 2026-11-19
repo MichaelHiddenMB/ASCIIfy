@@ -5,6 +5,7 @@ import { SCENES, DEFAULT_SCENE } from './scenes/index.js';
 import { loadSettings, saveSettings, watchSettings } from './storage.js';
 import { initClock } from './ui/clock.js';
 import { initSearch } from './ui/search.js';
+import { initBookmarks } from './ui/bookmarks.js';
 import { initSettings } from './ui/settings.js';
 
 const canvas = document.getElementById('scene');
@@ -70,6 +71,7 @@ const loop = createLoop({
 
 const clock = initClock();
 const search = initSearch();
+const bookmarks = initBookmarks();
 const panel = initSettings({ scenes: SCENES, onChange: saveSettings });
 
 function applySettings(patch) {
@@ -89,6 +91,7 @@ function applySettings(patch) {
   if (changed('speed')) loop.setSpeed(settings.speed);
   clock.update(settings);
   search.update(settings);
+  bookmarks.update(settings);
   panel.show(settings);
 }
 
