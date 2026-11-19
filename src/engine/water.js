@@ -65,6 +65,8 @@ export class Water {
     this.glyphColor = new Uint32Array(n);
     this.refX = new Float32Array(n); // refraction offsets in pixels
     this.refY = new Float32Array(n);
+    this.solid = null; // optional: 1 for cells that are land (waves bounce off them)
+    this.box = null; // optional: { c0, c1, r0, r1 }, the only part of the grid to shade
   }
 
   // Push a dent into the surface at (x, y) in pixels. `radius` is in cells.
@@ -142,12 +144,16 @@ export class Water {
   }
 
   simulate() {
-    const { cols, rows, h, prev, calm } = this;
+    const { cols, rows, h, prev, calm, solid } = this;
     const ky = this.aspect * this.aspect;
     // The outermost ring of cells stays flat, which makes waves bounce off the pond's edge.
     for (let r = 1; r < rows - 1; r++) {
       for (let c = 1; c < cols - 1; c++) {
         const i = r * cols + c;
+        if (solid && solid[i]) {
+          prev[i] = 0; // land never moves, so waves reflect off it like off a shore
+          continue;
+        }
         const here = h[i];
         const pull = (h[i - 1] + h[i + 1] - 2 * here) + (h[i - cols] + h[i + cols] - 2 * here) * ky;
         const speed = (here - prev[i]) * DAMP * calm[i];
@@ -162,10 +168,12 @@ export class Water {
   surface(t, width, height) {
     const { cols, rows, cw, ch, h, total, rgba, glyph, glyphColor, refX, refY, deep, shallow, glint, breeze, seed } = this;
     const aspect = this.aspect;
+    // Only shade the part of the grid that has water in it (the whole grid by default).
+    const { c0 = 0, c1 = cols - 1, r0 = 0, r1 = rows - 1 } = this.box || {};
 
     // Height including the breeze texture: two layers of slowly drifting noise.
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
         const i = r * cols + c;
         const b = noise2(c * 0.07 + t * 0.22, r * 0.07 / aspect - t * 0.15, seed)
           + 0.5 * noise2(c * 0.16 - t * 0.35, r * 0.16 / aspect + t * 0.1, seed + 1);
@@ -176,8 +184,8 @@ export class Water {
     const lx = this.light.x * width, ly = this.light.y * height, lz = this.light.z * Math.max(width, height);
     const minSide = Math.min(width, height);
 
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
         const i = r * cols + c;
         const l = c > 0 ? total[i - 1] : total[i];
         const rt = c < cols - 1 ? total[i + 1] : total[i];

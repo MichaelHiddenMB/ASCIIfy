@@ -167,12 +167,18 @@ export const koi = {
     // Wander: the koi's own direction drifts slowly and smoothly (noise, not random jumps).
     f.drift += (noise1(t * 0.15 + f.id * 13.7) - 0.5) * 2 * k.wander * dt;
 
-    // Near the edge of the pond, gently turn that direction back toward the middle.
-    const m = Math.max(60, f.span * 0.9);
-    const ix = f.x < m ? (m - f.x) / m : f.x > W - m ? -(f.x - (W - m)) / m : 0;
-    const iy = f.y < m ? (m - f.y) / m : f.y > H - m ? -(f.y - (H - m)) / m : 0;
-    const push = Math.min(1, Math.hypot(ix, iy));
-    if (push > 0) f.drift += angleDiff(f.drift, Math.atan2(iy, ix)) * Math.min(1, push * 2.5 * dt);
+    // Near the edge of the pond, gently turn that direction back toward the middle. The edge
+    // is the screen's, unless the scene gives the flock its own shape with `keepIn` (the
+    // little pond in the meadow does).
+    let home;
+    if (flock.keepIn) home = flock.keepIn(f);
+    else {
+      const m = Math.max(60, f.span * 0.9);
+      const ix = f.x < m ? (m - f.x) / m : f.x > W - m ? -(f.x - (W - m)) / m : 0;
+      const iy = f.y < m ? (m - f.y) / m : f.y > H - m ? -(f.y - (H - m)) / m : 0;
+      home = { angle: Math.atan2(iy, ix), push: Math.min(1, Math.hypot(ix, iy)) };
+    }
+    if (home.push > 0) f.drift += angleDiff(f.drift, home.angle) * Math.min(1, home.push * 2.5 * dt);
 
     // Food nearby? Head for it: the closer it is, the harder the turn and the faster the swim.
     const { meal, pull } = nearestFood(f, flock, k.foodRange);
