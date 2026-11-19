@@ -20,6 +20,10 @@
 // own strength, so the waves come in at a slant and some reach further up the beach than
 // others. Wet sand dries slowly, so the high-water mark of the last big wave lingers.
 //
+// SHADOWS. The scene hands the shore a list of soft round shadows each frame (one under each
+// animal and shell), and the sand and the sea floor are darkened under them. Seen through
+// the water, a shadow on the sea floor is a little fainter.
+//
 // THE MOUSE still makes ripples on the sea: those come from a real wave simulation (water.js),
 // which also bends what's underwater (refraction) as ripples and swells pass over it.
 import { clamp, hash3, smoothstep } from './math.js';
@@ -64,6 +68,7 @@ export class Shore {
     this.rows = 0;
     this.lastT = 0;
     this.amp = new Float32Array(6); // scratch: the strengths of the next few waves on one row
+    this.shadows = []; // { x, y, radius, strength } in pixels, set by the scene each frame
   }
 
   resize(cols, rows, cw, ch) {
@@ -94,6 +99,7 @@ export class Shore {
     this.rushing = new Uint8Array(rows); // 1 while a wave is running up the sand on that row
     this.flow = new Float32Array(rows); // how fast the water's edge is moving (px/s): negative = rushing up the beach
     this.foam = new Float32Array(n); // how foamy each cell is this frame (0 on dry sand)
+    this.shade = new Float32Array(n); // how dark the shadows make each cell this frame
 
     // The beach curves gently: a long bend plus small wobbles.
     const a = hash3(seed, 1, 1) * 6.28, b = hash3(seed, 2, 1) * 6.28;
@@ -184,6 +190,22 @@ export class Shore {
     this.lastT = t;
     const col = [0, 0, 0], tmp = [0, 0, 0];
     const seaW = this.seaWidth;
+    const shade = this.shade;
+
+    // Shadows: darkest in the middle, fading out to the edge.
+    shade.fill(0);
+    for (const sh of this.shadows) {
+      const c0 = Math.max(0, Math.floor((sh.x - sh.radius) / cw)), c1 = Math.min(cols - 1, Math.ceil((sh.x + sh.radius) / cw));
+      const r0 = Math.max(0, Math.floor((sh.y - sh.radius) / ch)), r1 = Math.min(rows - 1, Math.ceil((sh.y + sh.radius) / ch));
+      for (let r = r0; r <= r1; r++) {
+        for (let c = c0; c <= c1; c++) {
+          const d = Math.hypot((c + 0.5) * cw - sh.x, (r + 0.5) * ch - sh.y) / sh.radius;
+          if (d >= 1) continue;
+          const i = r * cols + c;
+          shade[i] = Math.max(shade[i], sh.strength * (1 - d * d));
+        }
+      }
+    }
 
     for (let r = 0; r < rows; r++) {
       // Where this row is in the wave recipe: wave number k, and how far through it (p).
@@ -224,6 +246,8 @@ export class Shore {
           col[0] = sand[s]; col[1] = sand[s + 1]; col[2] = sand[s + 2];
           if (damp > 0) mixInto(col, col, DAMP, damp);
           if (soaked > 0) mixInto(col, col, WET, soaked);
+          const dark = 1 - shade[i] * 0.75;
+          col[0] *= dark; col[1] *= dark; col[2] *= dark;
           rgba[o] = col[0]; rgba[o + 1] = col[1]; rgba[o + 2] = col[2]; rgba[o + 3] = 255;
           this.foam[i] = 0;
           refX[i] = 0;
@@ -318,7 +342,8 @@ export class Shore {
         const n2 = noise2(c * 0.12 - t * 0.09, r * 0.12 / aspect + t * 0.1, seed + 15);
         const caustic = Math.pow(1 - Math.abs(n1 - 0.5) * 2, 8) * Math.pow(1 - Math.abs(n2 - 0.5) * 2, 3);
         bright += caustic * 0.35 * (1 - f) ** 2;
-        col[0] *= bright; col[1] *= bright; col[2] *= bright;
+        const lit = bright * (1 - shade[i] * 0.8); // shadows on the sea floor, seen through the water
+        col[0] *= lit; col[1] *= lit; col[2] *= lit;
 
         // Water only a few pixels deep, running over the sand, lets the sand show through.
         // It thickens gradually away from the edge, so there's no hard line.

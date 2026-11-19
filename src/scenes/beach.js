@@ -17,6 +17,10 @@
 // to the water, and run up the beach when a wave rushes at them. Their footprints wash away
 // when the water runs over them.
 //
+// Every animal, and every shell, casts a soft shadow away from the sun: sea creatures cast
+// theirs on the sea floor, further away the higher they swim, so they look like they're
+// floating above the reef.
+//
 // The mouse makes ripples on the sea, and a fast flick of it near a crab sends the crab
 // running. A click on the water makes a splash; a click on the sand scares nearby crabs.
 import { Flock } from '../engine/flock.js';
@@ -62,10 +66,11 @@ export function createBeach({ density = 1 } = {}) {
   const turtleTuning = { ...turtles.defaults };
   const rayTuning = { ...stingrays.defaults };
   const sea = [
-    { animal: jellyfish, tuning: jellyTuning, flock: new Flock(jellyfish, jellyTuning, Math.round(JELLIES * density)), per: JELLIES, out: 0.5, upTo: 1 },
-    { animal: tropicalFish, tuning: fishTuning, flock: new Flock(tropicalFish, fishTuning, Math.round(FISH * density)), per: FISH, out: 0.12, upTo: 0.8 },
-    { animal: turtles, tuning: turtleTuning, flock: new Flock(turtles, turtleTuning, Math.round(TURTLES * density)), per: TURTLES, out: 0.2, upTo: 1 },
-    { animal: stingrays, tuning: rayTuning, flock: new Flock(stingrays, rayTuning, Math.round(RAYS * density)), per: RAYS, out: 0.15, upTo: 1 },
+    // `shadow`: how big (fraction of size) and dark its shadow is. Jellies are see-through.
+    { animal: jellyfish, tuning: jellyTuning, flock: new Flock(jellyfish, jellyTuning, Math.round(JELLIES * density)), per: JELLIES, out: 0.5, upTo: 1, shadow: [0.3, 0.16] },
+    { animal: tropicalFish, tuning: fishTuning, flock: new Flock(tropicalFish, fishTuning, Math.round(FISH * density)), per: FISH, out: 0.12, upTo: 0.8, shadow: [0.24, 0.42] },
+    { animal: turtles, tuning: turtleTuning, flock: new Flock(turtles, turtleTuning, Math.round(TURTLES * density)), per: TURTLES, out: 0.2, upTo: 1, shadow: [0.36, 0.5] },
+    { animal: stingrays, tuning: rayTuning, flock: new Flock(stingrays, rayTuning, Math.round(RAYS * density)), per: RAYS, out: 0.15, upTo: 1, shadow: [0.42, 0.5] },
   ];
   for (const kind of sea) kind.flock.keepIn = (c) => seaBounds(c, kind);
 
@@ -109,6 +114,25 @@ export function createBeach({ density = 1 } = {}) {
     if (c.x > right) { c.x = right; slideAlong(c, right, -1, 0); }
     if (c.y < top) { c.y = top; slideAlong(c, top, 0, 1); }
     if (c.y > bottom) { c.y = bottom; slideAlong(c, bottom, 0, -1); }
+  }
+
+  // Where the shadows fall. The sun is high in the sky, a little to the top left, so shadows
+  // fall a short way down and to the right. A sea creature's shadow is on the sea floor: the
+  // higher it swims (the nearer the surface, the bigger its depth), the further away and the
+  // softer its shadow.
+  const sun = { x: 0.6, y: 0.8, length: 1 };
+  function castShadows() {
+    const list = [];
+    const add = (x, y, height, radius, strength) => list.push({
+      x: x + sun.x * height * sun.length, y: y + sun.y * height * sun.length, radius: radius * (1 + height / 160), strength,
+    });
+    for (const kind of sea) {
+      const [size, dark] = kind.shadow;
+      for (const c of kind.flock.creatures) add(c.x, c.y, 14 + 75 * c.depth, c.span * size, dark * (1 - 0.25 * c.depth));
+    }
+    for (const c of crabFlock.creatures) add(c.x, c.y, 8, c.span * 0.3, 0.35);
+    for (const s of shells) add(s.x + s.ox, s.y + s.oy, 4, s.span * 0.36, 0.22 * (1 - s.wet * 0.6));
+    return list;
   }
 
   // Puts a sea creature somewhere in its stretch of open water.
@@ -192,6 +216,7 @@ export function createBeach({ density = 1 } = {}) {
         }
       }
       stepShells(shells, shore, crabFlock.time, dt);
+      shore.shadows = castShadows();
       shore.step(dt);
     },
 

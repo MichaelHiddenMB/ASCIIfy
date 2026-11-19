@@ -304,12 +304,16 @@ export function drawReef(reef, shore, pen) {
     const j = clamp(r + Math.round(refY[i] / ch), 0, rows - 1) * cols + clamp(c + Math.round(refX[i] / cw), 0, cols - 1);
     if (!solid[j]) continue;
     const hz = haze[i], o = i * 4, k = j * 3;
+    const dark = 1 - shore.shade[i] * 0.8; // an animal's shadow falling on the coral
     const wr = water[o], wg = water[o + 1], wb = water[o + 2];
     let glyph = sGlyph[j];
     if (sKind[j] === ANEMONE) glyph = lineGlyph(sAngle[j] + 0.5 * Math.sin(t * 2.1 + sAngle[j] * 3 + c)).charCodeAt(0);
     const gh = hz * 0.8;
+    // (The water color is already shadowed, so only the coral's own color is darkened here.)
+    const ir = ink[k] * dark, ig = ink[k + 1] * dark, ib = ink[k + 2] * dark;
+    const fr = fill[k] * dark, fg = fill[k + 1] * dark, fb = fill[k + 2] * dark;
     pen.cell(i, glyph,
-      packed(ink[k] + (wr - ink[k]) * gh, ink[k + 1] + (wg - ink[k + 1]) * gh, ink[k + 2] + (wb - ink[k + 2]) * gh),
-      packed(fill[k] + (wr - fill[k]) * hz, fill[k + 1] + (wg - fill[k + 1]) * hz, fill[k + 2] + (wb - fill[k + 2]) * hz));
+      packed(ir + (wr - ir) * gh, ig + (wg - ig) * gh, ib + (wb - ib) * gh),
+      packed(fr + (wr - fr) * hz, fg + (wg - fg) * hz, fb + (wb - fb) * hz));
   }
 }
