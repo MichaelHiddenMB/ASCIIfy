@@ -5,6 +5,9 @@
 // The ground (shore.js) does the sand, the sea and the waves, and shows the reef (reef.js)
 // on the sea floor. Shells and starfish (shells.js) lie on the sand.
 //
+// In the sea, jellyfish pulse slowly through the open water beyond the reef. Sea creatures
+// are drawn farthest (deepest) first and bent by the water's surface, like the pond's koi.
+//
 // On the beach, a couple of crabs scuttle about. They stay on the sand, keeping fairly close
 // to the water, and run up the beach when a wave rushes at them. Their footprints wash away
 // when the water runs over them.
@@ -17,6 +20,7 @@ import { clamp, rand } from '../engine/math.js';
 import { buildReef, drawReef } from './reef.js';
 import { drawShells, placeShells } from './shells.js';
 import { crabs } from '../animals/crabs.js';
+import { jellyfish } from '../animals/jellyfish.js';
 
 const PALETTE = {
   background: [12, 56, 104], // the deep sea (far-off sea creatures fade toward this)
@@ -27,6 +31,7 @@ const PALETTE = {
 };
 
 const CRABS = 2;
+const JELLIES = 4;
 
 export function createBeach({ density = 1 } = {}) {
   const tuning = { fog: 0.6, shimmer: 0.3, sparkle: 0.1, trail: 0, trailFade: 0.4, grid: 1 };
@@ -37,6 +42,33 @@ export function createBeach({ density = 1 } = {}) {
   let lastPointer = null;
   let shells = [];
   let size = { w: 1, h: 1 };
+
+  // ---- the sea creatures ----
+  // Each kind keeps to open water at least `out` (a fraction of the sea's width) beyond the
+  // average waterline, and away from the screen's edges.
+  const jellyTuning = { ...jellyfish.defaults, fog: 0.5 };
+  const sea = [
+    { animal: jellyfish, tuning: jellyTuning, flock: new Flock(jellyfish, jellyTuning, Math.round(JELLIES * density)), per: JELLIES, out: 0.5 },
+  ];
+  for (const kind of sea) kind.flock.keepIn = (c) => seaBounds(c, kind.out);
+
+  function seaBounds(c, out) {
+    const m = Math.max(50, c.span * 0.5);
+    const base = c.x - shore.distance(c.x, c.y);
+    const left = base + Math.max(shore.breakAt * 1.8, shore.seaWidth * out), right = size.w - m;
+    const ix = c.x < left ? (left - c.x) / 80 : c.x > right ? -(c.x - right) / m : 0;
+    const iy = c.y < m ? (m - c.y) / m : c.y > size.h - m ? -(c.y - (size.h - m)) / m : 0;
+    return { angle: Math.atan2(iy, ix), push: Math.min(1, Math.hypot(ix, iy)) };
+  }
+
+  // Puts a sea creature somewhere in its stretch of open water.
+  function placeInSea(c, kind) {
+    c.y = rand(60, size.h - 60);
+    const base = size.w - shore.seaWidth;
+    c.x = rand(base + shore.seaWidth * kind.out + 40, size.w - 60);
+    c.drift = rand(0, Math.PI * 2);
+    kind.animal.enter?.(c, kind.flock);
+  }
 
   // The strip of beach crabs keep to: not in the sea, not off screen, and not too far up the
   // sand from the water.
@@ -71,6 +103,10 @@ export function createBeach({ density = 1 } = {}) {
       shells = placeShells(shore, w, h);
       crabFlock.resize(w, h);
       for (const c of crabFlock.creatures) placeOnBeach(c);
+      for (const kind of sea) {
+        kind.flock.resize(w, h);
+        for (const c of kind.flock.creatures) placeInSea(c, kind);
+      }
     },
 
     step(dt) {
@@ -85,12 +121,33 @@ export function createBeach({ density = 1 } = {}) {
           crabs.startle(c, -1, rand(-0.5, 0.5), 0.35, crabFlock);
         }
       }
+      for (const kind of sea) {
+        kind.flock.step(dt);
+        kind.flock.events.length = 0;
+        // Newcomers (and any that got lost) start out in open water.
+        for (const c of kind.flock.creatures) {
+          if (c.y < -c.span || c.y > size.h + c.span || c.x > size.w + c.span || shore.distance(c.x, c.y) < 0) placeInSea(c, kind);
+        }
+      }
       shore.step(dt);
     },
 
     draw(pen) {
       const renderer = pen.r;
       drawReef(shore.reef, shore, pen);
+
+      // Sea creatures, deepest first, seen through the water.
+      const swimmers = [];
+      for (const kind of sea) for (const c of kind.flock.creatures) swimmers.push([c, kind]);
+      swimmers.sort((a, b) => a[0].depth - b[0].depth);
+      pen.refract = true;
+      for (const [c, kind] of swimmers) {
+        renderer.tuning = kind.tuning;
+        kind.animal.draw(c, pen, kind.flock);
+      }
+      pen.refract = false;
+      renderer.tuning = tuning;
+
       drawShells(shells, pen);
 
       // Footprints under the water are washed away.
@@ -110,6 +167,7 @@ export function createBeach({ density = 1 } = {}) {
     tap(x, y) {
       if (shore.distance(x, y) > 0) water.disturb(x, y, 1.2, 1.6);
       crabFlock.startle(x, y);
+      for (const kind of sea) kind.flock.startle(x, y);
     },
 
     pointer(x, y) {
@@ -133,6 +191,7 @@ export function createBeach({ density = 1 } = {}) {
 
     setDensity(d) {
       crabFlock.count = Math.round(CRABS * d);
+      for (const kind of sea) kind.flock.count = Math.round(kind.per * d);
     },
   };
 }
