@@ -186,11 +186,16 @@ export function initBookmarks() {
   // depth d first closes whatever was open at d and deeper.
   function openMenu(nodes, owner, depth) {
     closeMenus(depth);
+    // The box draws the top two + corners and the list inside it the bottom two, the same
+    // way the settings panel does (an element can only add two of these drawn-in pieces).
     const menu = document.createElement('div');
     menu.className = 'bm-menu';
-    menu.setAttribute('role', 'menu');
-    if (nodes.length) menu.append(...nodes.map((node) => makeItem(node, depth + 1)));
-    else menu.insertAdjacentHTML('beforeend', '<div class="bm-empty">(empty)</div>');
+    const list = document.createElement('div');
+    list.className = 'bm-list';
+    list.setAttribute('role', 'menu');
+    if (nodes.length) list.append(...nodes.map((node) => makeItem(node, depth + 1)));
+    else list.insertAdjacentHTML('beforeend', '<div class="bm-empty">(empty)</div>');
+    menu.append(list);
     document.body.append(menu);
     place(menu, owner.getBoundingClientRect(), depth === 0);
     owner.classList.add('open');
