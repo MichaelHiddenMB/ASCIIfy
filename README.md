@@ -1,4 +1,4 @@
-# AASCIfy
+# ASCIIfy
 
 A Chrome extension that turns your new tab into a living, animated ASCII art scene: a koi
 pond seen from above, with koi swimming lazily beneath drifting lily pads. On top there's a

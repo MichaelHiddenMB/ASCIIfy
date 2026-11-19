@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "AASCIfy",
+  "name": "ASCIIfy",
   "version": "0.1.0",
   "description": "Turns your new tab into a living, animated ASCII art scene.",
   "chrome_url_overrides": {
