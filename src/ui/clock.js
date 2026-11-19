@@ -56,7 +56,7 @@ export function initClock() {
     lastKey = key;
     timeEl.textContent = bigText(suffix ? `${time} ${suffix}` : time);
     timeEl.setAttribute('aria-label', `${time} ${suffix}`.trim());
-    dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long' }); // just the day of the week
     greetingEl.textContent = greeting(now.getHours(), opts.name);
   }
 
