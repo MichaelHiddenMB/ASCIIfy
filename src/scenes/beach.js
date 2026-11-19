@@ -340,7 +340,10 @@ export function createBeach({ density = 1, sunset = false, waves = 1 } = {}) {
         ctx.drawImage(halo, j.x - size / 2, j.y - size / 2, size, size);
       }
       // Plankton: brief sparks where the water is churned up (foam, or rippling from the mouse).
+      // Kept sparse and faint: only well-churned water sparks, and only now and then, so it
+      // twinkles along the waves rather than lighting the whole surf up.
       const spark = glowSprite('plankton', '90, 255, 230', 40);
+      const RATE = 0.1; // how likely a churned cell is to spark at any moment
       ctx.font = `600 ${Math.round(ch * 0.74)}px ${FONT_STACK}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -348,15 +351,15 @@ export function createBeach({ density = 1, sunset = false, waves = 1 } = {}) {
       const tick = Math.floor(t * 8);
       for (let i = 0; i < foam.length; i++) {
         const churn = Math.min(1, foam[i] * 0.6 + stir[i] * 18);
-        if (churn < 0.12) continue;
+        if (churn < 0.25) continue;
         const c = i % cols, row = (i / cols) | 0;
         const h = hash3(c, row, tick);
-        if (h > churn * 0.3) continue;
-        const glow = 1 - h / (churn * 0.3); // brightest for a moment, then gone
+        if (h > churn * RATE) continue;
+        const glow = 1 - h / (churn * RATE); // brightest for a moment, then gone
         const x = (c + 0.5) * cw, y = (row + 0.5) * ch;
-        ctx.globalAlpha = glow;
-        ctx.drawImage(spark, x - 20, y - 20, 40, 40);
-        ctx.fillStyle = `rgba(170, 255, 240, ${glow})`;
+        ctx.globalAlpha = glow * 0.45;
+        ctx.drawImage(spark, x - 13, y - 13, 26, 26);
+        ctx.fillStyle = `rgba(170, 255, 240, ${glow * 0.8})`;
         ctx.fillText(glow > 0.6 ? '*' : '.', x, y + 1);
       }
       ctx.globalAlpha = 1;
