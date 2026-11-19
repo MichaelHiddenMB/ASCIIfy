@@ -13,9 +13,15 @@
 // Only two things on the reef sway with the water (seagrass and anemone tentacles), so those
 // cells are marked with a `kind`, and their characters are picked fresh every frame.
 //
-// The reef grows in a band out from the beach: beyond the surf, and not in the deepest water.
-// It's built from "heads" (single coral colonies, each a different type), packed loosely
-// inside patches decided by noise, with meadows of seagrass in the sandy shallows between.
+// The reef grows as a few separate PATCH REEFS: rough ovals of coral out beyond the surf, with
+// open sand and water between them, the way real reefs look from above. That leaves most of
+// the sea clear, so the animals can be seen. Each patch is packed with "heads" (single coral
+// colonies, each a different type), and meadows of seagrass grow in the sandy shallows.
+//
+// KEEPING IT CALM. The coral is scenery, not the star: it's faded well into the color of the
+// water above it, a little greyer than its true color, and most of its cells have no
+// character on them (the few that do are only a little darker than the block), so the bright,
+// busy animals swimming over it stand out.
 // Each type has its own little painter that works out, for a cell at (dx, dy) pixels from the
 // head's middle, what's there.
 import { clamp, frac, hash3, rand, smoothstep, TAU } from '../engine/math.js';
@@ -65,9 +71,6 @@ export function buildReef(shore) {
     haze: new Float32Array(n), // how much the water above hides it (deeper = more)
     cells: [],
   };
-  // Where the reef grows, as a fraction (0..1), by distance out to sea.
-  const zone = (dd) => smoothstep(110, 200, dd) * smoothstep(seaWidth * 0.78, seaWidth * 0.5, dd);
-  const patches = (x, y) => smoothstep(0.42, 0.6, fbm2(x / 240, y / 240, 3, seed));
 
   // Writes one cell of the mosaic: solid things into the solid layer, faint ones into the wash.
   function paint(c, r, color, cover, glyph, glyphColor, kind = STILL, angle = 0) {
@@ -76,14 +79,19 @@ export function buildReef(shore) {
       const g = glyphColor || color;
       if (!reef.solid[i]) reef.cells.push(i);
       reef.solid[i] = 1;
+      // A little greyer than its true color, and characters only a little darker than the block.
+      const grey = (color[0] + color[1] + color[2]) / 3;
       for (let k = 0; k < 3; k++) {
-        reef.fill[i * 3 + k] = color[k];
-        reef.ink[i * 3 + k] = g[k];
+        const fill = color[k] + (grey - color[k]) * 0.25;
+        reef.fill[i * 3 + k] = fill;
+        reef.ink[i * 3 + k] = fill + (g[k] - fill) * 0.45;
       }
-      reef.sGlyph[i] = glyph ? glyph.charCodeAt(0) : 32;
+      // Most cells go without a character (anemone tentacles always keep theirs, they sway).
+      const quiet = kind !== ANEMONE && hash3(c, r, seed + 21) < 0.6;
+      reef.sGlyph[i] = glyph && !quiet ? glyph.charCodeAt(0) : 32;
       reef.sKind[i] = kind;
       reef.sAngle[i] = angle;
-      reef.haze[i] = 0.14 + 0.45 * clamp(shore.distance((c + 0.5) * cw, (r + 0.5) * ch) / seaWidth, 0, 1);
+      reef.haze[i] = 0.34 + 0.36 * clamp(shore.distance((c + 0.5) * cw, (r + 0.5) * ch) / seaWidth, 0, 1);
       return;
     }
     if (reef.solid[i] || cover < reef.cover[i] * 0.5) return; // don't let a faint edge wipe out something solid
@@ -109,14 +117,34 @@ export function buildReef(shore) {
     }
   }
 
-  // ---- the coral heads ----
-  const heads = [];
+  // ---- the patch reefs: a few rough ovals, well apart ----
   const scale = clamp(Math.min(W, H) / 900, 0.8, 1.3);
-  const want = Math.round((W * H) / 11000);
-  for (let tries = 0; tries < want * 30 && heads.length < want; tries++) {
-    const x = rand(0, W), y = rand(0, H);
-    const dd = shore.distance(x, y);
-    if (Math.random() > zone(dd) * (0.04 + 0.96 * patches(x, y))) continue;
+  const patches = [];
+  const nPatch = clamp(Math.round((H * seaWidth) / 190000), 3, 7);
+  for (let tries = 0; tries < 300 && patches.length < nPatch; tries++) {
+    const y = rand(H * 0.06, H * 0.94);
+    const x = -shore.distance(0, y) + Math.max(170, seaWidth * rand(0.16, 0.62)); // the waterline on this row, plus some
+    const rx = rand(70, 130) * scale, ry = rand(55, 100) * scale;
+    if (patches.some((p) => Math.hypot((p.x - x) / (p.rx + rx), (p.y - y) / (p.ry + ry)) < 1.3)) continue;
+    patches.push({ x, y, rx, ry });
+  }
+  // How far inside a patch (x, y) is: 1 at its middle, 0 at its ragged edge, below 0 outside.
+  const inPatch = (x, y) => {
+    let best = -1;
+    for (const p of patches) {
+      const d = Math.hypot((x - p.x) / p.rx, (y - p.y) / p.ry) * (1 + 0.35 * (noise2(x / 45, y / 45, seed + 7) - 0.5));
+      best = Math.max(best, 1 - d);
+    }
+    return best;
+  };
+
+  // ---- the coral heads, packed into the patches ----
+  const heads = [];
+  const want = Math.round(patches.reduce((sum, p) => sum + Math.PI * p.rx * p.ry, 0) / 1500);
+  for (let tries = 0; tries < want * 40 && heads.length < want; tries++) {
+    const p = patches[Math.floor(Math.random() * patches.length)];
+    const x = p.x + rand(-1, 1) * p.rx, y = p.y + rand(-1, 1) * p.ry;
+    if (inPatch(x, y) <= 0.05) continue;
     const type = pickType();
     const R = (type === 'anemone' ? rand(9, 15) : type === 'sponge' ? rand(10, 18) : type === 'fan' ? rand(22, 36) : type === 'branch' ? rand(20, 42) : rand(14, 30)) * scale;
     if (heads.some((h) => Math.hypot(h.x - x, h.y - y) < (h.R + R) * 0.75)) continue;
