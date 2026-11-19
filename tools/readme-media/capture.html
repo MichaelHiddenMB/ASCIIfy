@@ -1,0 +1,56 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- Runs scenes frame by frame for record.mjs, which explains how this works. -->
+<style>body{margin:0;background:#000}</style>
+<canvas id="c"></canvas>
+<script>
+// Same random numbers every run, and a clock that follows the simulation, not real time.
+let seed = 1;
+Math.random = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+window.__now = 0;
+performance.now = () => window.__now;
+</script>
+<script type="module">
+import { Renderer } from '/src/engine/renderer.js';
+import { SCENES } from '/src/scenes/index.js';
+import { JOBS } from './jobs.js';
+
+const post = (p, body) => fetch(p, { method: 'POST', body });
+const log = (m) => post('/log', String(m));
+window.onerror = (m) => log('error ' + m);
+
+const pick = new URLSearchParams(location.search).get('jobs');
+const canvas = document.getElementById('c');
+try {
+  for (const job of JOBS.filter((j) => pick === 'all' || pick.split(',').includes(j.name))) {
+    log('job ' + job.name);
+    seed = job.seed ?? 7;
+    const r = new Renderer(canvas);
+    const scene = SCENES[job.scene].create(job.options || {});
+    scene.setLight?.(job.light ?? true);
+    r.use(scene.palette, scene.tuning, scene.ground);
+    const { w, h, cell = 9, dpr = 1 } = job;
+    r.resize(w, h, dpr, cell);
+    scene.resize(w, h, r.cw, r.ch);
+    const dt = 1 / 30;
+    // Let the scene settle (animals spread out, waves build up).
+    for (let t = 0; t < (job.warmup ?? 5); t += dt) { scene.step(dt); window.__now += dt * 1000; }
+    r.render(scene, dt);
+    const every = job.every ?? 2; // world steps per saved frame
+    let i = 0;
+    for (let f = 0; f < job.frames * every; f++) {
+      const time = f * dt;
+      job.act?.(scene, time, w, h);
+      scene.step(dt);
+      window.__now += dt * 1000;
+      r.render(scene, dt);
+      if (f % every === 0) {
+        let out = canvas;
+        if (job.post) out = job.post(canvas, r, time);
+        await post(`/frame?name=${job.name}&i=${i++}`, out.toDataURL('image/png'));
+      }
+    }
+  }
+} catch (e) { log('fail ' + e.stack); }
+post('/done', '');
+</script>
