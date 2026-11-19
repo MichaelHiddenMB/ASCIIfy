@@ -90,6 +90,7 @@ export class Shore {
     this.offset = new Float32Array(rows); // how far out of step each row's waves are
     this.edge = new Float32Array(rows); // where the water's edge is right now (as a d)
     this.wet = new Float32Array(rows); // how far up the sand is still wet (as a d)
+    this.rushing = new Uint8Array(rows); // 1 while a wave is running up the sand on that row
 
     // The beach curves gently: a long bend plus small wobbles.
     const a = hash3(seed, 1, 1) * 6.28, b = hash3(seed, 2, 1) * 6.28;
@@ -151,6 +152,11 @@ export class Shore {
     return this.baseline[r] + this.edge[r];
   }
 
+  // Is a wave rushing up the sand on the row at y right now?
+  waveRushing(y) {
+    return this.rushing[clamp(Math.floor(y / this.ch), 0, this.rows - 1)] === 1;
+  }
+
   // How far (x, y) is from the average waterline: negative on the sand, positive at sea.
   distance(x, y) {
     const r = clamp(Math.floor(y / this.ch), 0, this.rows - 1);
@@ -186,6 +192,7 @@ export class Shore {
       else if (p < 0.9) e = -R + (R + back) * smoothstep(0, 1, (p - rise) / (0.9 - rise));
       else e = back;
       edge[r] = e;
+      this.rushing[r] = p < rise ? 1 : 0;
       // Wet sand: as far as the water has reached, drying back slowly.
       wet[r] = Math.min(wet[r] + dt * 5, e);
       const wetTop = wet[r];
