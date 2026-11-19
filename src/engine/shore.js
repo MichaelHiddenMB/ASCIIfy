@@ -4,8 +4,9 @@
 // every cell.
 //
 // THE SHORELINE. For each row of cells there's a "baseline": where the water's edge sits on
-// average. It wobbles gently down the screen so the beach curves like a real one. Every cell
-// knows its distance `d` from that line, in pixels: negative on the sand, positive out to sea.
+// average, about a fifth of the way across the screen (a narrow beach, lots of sea). It
+// wobbles gently down the screen so the beach curves like a real one. Every cell knows its
+// distance `d` from that line, in pixels: negative on the sand, positive out to sea.
 //
 // THE WAVES are not simulated like the pond's ripples; they follow a recipe, like a dance
 // with fixed steps that repeats every `period` seconds:
@@ -96,7 +97,7 @@ export class Shore {
     const a = hash3(seed, 1, 1) * 6.28, b = hash3(seed, 2, 1) * 6.28;
     for (let r = 0; r < rows; r++) {
       const y = (r + 0.5) * ch;
-      this.baseline[r] = W * 0.42 + W * 0.035 * Math.sin((y / H) * Math.PI * 1.4 + a) + 40 * (fbm1(y / 170, 2, seed) - 0.5);
+      this.baseline[r] = W * 0.22 + W * 0.025 * Math.sin((y / H) * Math.PI * 1.4 + a) + 30 * (fbm1(y / 170, 2, seed) - 0.5);
       this.offset[r] = 0.14 * Math.sin((y / H) * Math.PI * 1.1 + b) + 0.08 * (noise1(y / 110, seed + 3) - 0.5);
     }
     this.runup = clamp(W * 0.05, 40, 90); // how far an average wave runs up the sand, px

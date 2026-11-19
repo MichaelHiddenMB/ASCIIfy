@@ -1,4 +1,4 @@
-// Beach: a top-down view of a sandy beach on the left and the sea on the right, with waves
+// Beach: a top-down view of a narrow sandy beach on the left and the sea on the right, with waves
 // rolling in, breaking into foam and washing up the sand.
 // Same scene shape as koi-pond.js (see the list of what a scene provides at the top of that file).
 //
@@ -100,7 +100,7 @@ export function createBeach({ density = 1 } = {}) {
   // Puts a crab somewhere on the damp sand.
   function placeOnBeach(c) {
     c.y = rand(60, size.h - 60);
-    const base = c.x - shore.distance(c.x, c.y) || size.w * 0.4;
+    const base = c.x - shore.distance(c.x, c.y) || size.w * 0.2;
     c.x = base - rand(30, Math.max(120, shore.runup * 3));
     crabs.enter(c, crabFlock);
   }
