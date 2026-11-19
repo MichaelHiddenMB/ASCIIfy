@@ -3,10 +3,12 @@
 // Same scene shape as koi-pond.js (see the list of what a scene provides at the top of that file).
 //
 // The ground (shore.js) does the sand, the sea and the waves, and shows the reef (reef.js)
-// on the sea floor. The mouse makes ripples on the sea, and a click on the water makes a splash.
+// on the sea floor. Shells and starfish (shells.js) lie on the sand. The mouse makes ripples
+// on the sea, and a click on the water makes a splash.
 import { Shore } from '../engine/shore.js';
 import { clamp } from '../engine/math.js';
 import { buildReef, drawReef } from './reef.js';
+import { drawShells, placeShells } from './shells.js';
 
 const PALETTE = {
   background: [12, 56, 104], // the deep sea (far-off sea creatures fade toward this)
@@ -22,6 +24,7 @@ export function createBeach() {
   const water = shore.water;
   let time = 0;
   let lastPointer = null;
+  let shells = [];
 
   return {
     palette: PALETTE,
@@ -33,6 +36,7 @@ export function createBeach() {
     resize(w, h, cw, ch) {
       shore.resize(Math.ceil(w / cw), Math.ceil(h / ch), cw, ch);
       shore.reef = buildReef(shore);
+      shells = placeShells(shore, w, h);
     },
 
     step(dt) {
@@ -42,6 +46,7 @@ export function createBeach() {
 
     draw(pen) {
       drawReef(shore.reef, shore, pen);
+      drawShells(shells, pen);
     },
 
     tap(x, y) {
