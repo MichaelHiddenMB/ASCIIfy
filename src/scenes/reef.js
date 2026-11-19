@@ -83,7 +83,7 @@ export function buildReef(shore) {
       reef.sGlyph[i] = glyph ? glyph.charCodeAt(0) : 32;
       reef.sKind[i] = kind;
       reef.sAngle[i] = angle;
-      reef.haze[i] = 0.06 + 0.5 * clamp(shore.distance((c + 0.5) * cw, (r + 0.5) * ch) / seaWidth, 0, 1);
+      reef.haze[i] = 0.14 + 0.45 * clamp(shore.distance((c + 0.5) * cw, (r + 0.5) * ch) / seaWidth, 0, 1);
       return;
     }
     if (reef.solid[i] || cover < reef.cover[i] * 0.5) return; // don't let a faint edge wipe out something solid
@@ -137,6 +137,8 @@ export function buildReef(shore) {
       }
     }
   }
+  // Where the anemones are, so clownfish can find one to live in.
+  reef.anemones = heads.filter((h) => h.type === 'anemone').map((h) => ({ x: h.x, y: h.y, r: h.R }));
   return reef;
 }
 

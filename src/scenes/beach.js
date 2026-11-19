@@ -5,7 +5,8 @@
 // The ground (shore.js) does the sand, the sea and the waves, and shows the reef (reef.js)
 // on the sea floor. Shells and starfish (shells.js) lie on the sand.
 //
-// In the sea, jellyfish pulse slowly through the open water beyond the reef. Sea creatures
+// In the sea, schools of tropical fish swim over the reef (clownfish each keep to an anemone),
+// and jellyfish pulse slowly through the open water beyond it. Sea creatures
 // are drawn farthest (deepest) first and bent by the water's surface, like the pond's koi.
 //
 // On the beach, a couple of crabs scuttle about. They stay on the sand, keeping fairly close
@@ -21,6 +22,7 @@ import { buildReef, drawReef } from './reef.js';
 import { drawShells, placeShells } from './shells.js';
 import { crabs } from '../animals/crabs.js';
 import { jellyfish } from '../animals/jellyfish.js';
+import { tropicalFish } from '../animals/tropical-fish.js';
 
 const PALETTE = {
   background: [12, 56, 104], // the deep sea (far-off sea creatures fade toward this)
@@ -32,6 +34,7 @@ const PALETTE = {
 
 const CRABS = 2;
 const JELLIES = 4;
+const FISH = 22;
 
 export function createBeach({ density = 1 } = {}) {
   const tuning = { fog: 0.6, shimmer: 0.3, sparkle: 0.1, trail: 0, trailFade: 0.4, grid: 1 };
@@ -44,18 +47,20 @@ export function createBeach({ density = 1 } = {}) {
   let size = { w: 1, h: 1 };
 
   // ---- the sea creatures ----
-  // Each kind keeps to open water at least `out` (a fraction of the sea's width) beyond the
-  // average waterline, and away from the screen's edges.
+  // Each kind keeps to its own stretch of sea: between `out` and `upTo` (fractions of the
+  // sea's width) beyond the average waterline, and away from the screen's edges.
   const jellyTuning = { ...jellyfish.defaults, fog: 0.5 };
+  const fishTuning = { ...tropicalFish.defaults };
   const sea = [
-    { animal: jellyfish, tuning: jellyTuning, flock: new Flock(jellyfish, jellyTuning, Math.round(JELLIES * density)), per: JELLIES, out: 0.5 },
+    { animal: jellyfish, tuning: jellyTuning, flock: new Flock(jellyfish, jellyTuning, Math.round(JELLIES * density)), per: JELLIES, out: 0.5, upTo: 1 },
+    { animal: tropicalFish, tuning: fishTuning, flock: new Flock(tropicalFish, fishTuning, Math.round(FISH * density)), per: FISH, out: 0.12, upTo: 0.8 },
   ];
-  for (const kind of sea) kind.flock.keepIn = (c) => seaBounds(c, kind.out);
+  for (const kind of sea) kind.flock.keepIn = (c) => seaBounds(c, kind);
 
-  function seaBounds(c, out) {
+  function seaBounds(c, { out, upTo }) {
     const m = Math.max(50, c.span * 0.5);
     const base = c.x - shore.distance(c.x, c.y);
-    const left = base + Math.max(shore.breakAt * 1.8, shore.seaWidth * out), right = size.w - m;
+    const left = base + Math.max(shore.breakAt * 1.8, shore.seaWidth * out), right = Math.min(size.w - m, base + shore.seaWidth * upTo);
     const ix = c.x < left ? (left - c.x) / 80 : c.x > right ? -(c.x - right) / m : 0;
     const iy = c.y < m ? (m - c.y) / m : c.y > size.h - m ? -(c.y - (size.h - m)) / m : 0;
     return { angle: Math.atan2(iy, ix), push: Math.min(1, Math.hypot(ix, iy)) };
@@ -65,7 +70,7 @@ export function createBeach({ density = 1 } = {}) {
   function placeInSea(c, kind) {
     c.y = rand(60, size.h - 60);
     const base = size.w - shore.seaWidth;
-    c.x = rand(base + shore.seaWidth * kind.out + 40, size.w - 60);
+    c.x = rand(base + shore.seaWidth * kind.out + 40, Math.min(size.w - 60, base + shore.seaWidth * kind.upTo - 20));
     c.drift = rand(0, Math.PI * 2);
     kind.animal.enter?.(c, kind.flock);
   }
@@ -101,6 +106,7 @@ export function createBeach({ density = 1 } = {}) {
       shore.resize(Math.ceil(w / cw), Math.ceil(h / ch), cw, ch);
       shore.reef = buildReef(shore);
       shells = placeShells(shore, w, h);
+      sea[1].flock.anemones = shore.reef.anemones;
       crabFlock.resize(w, h);
       for (const c of crabFlock.creatures) placeOnBeach(c);
       for (const kind of sea) {
