@@ -102,84 +102,196 @@ body[data-scene="beach"] #clock {
 
 #search-input::placeholder { color: color-mix(in srgb, var(--text) 45%, transparent); }
 
-/* ---------- settings ---------- */
+/* ---------- settings ----------
+   Styled like a box drawn in text: thin lines with + at the corners, the title set into the
+   top line like +--[ settings ]---+, sliders drawn as [######------], checkboxes as [x], and
+   a > marking whichever row you're on. (settings.js adds the extra pieces.) */
 
 #settings-toggle {
   position: fixed;
   right: 16px;
   bottom: 14px;
-  padding: 6px 10px;
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  border-radius: 4px;
+  padding: 4px 6px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  border: none;
   color: var(--accent);
   font: 13px var(--font);
   cursor: pointer;
-  opacity: 0.65;
+  opacity: 0.7;
 }
 
 #settings-toggle:hover,
 #settings-toggle:focus-visible,
 #settings-toggle[aria-expanded="true"] { opacity: 1; }
+#settings-toggle:focus-visible { outline: none; text-decoration: underline; }
 
 #settings-panel {
+  --line: color-mix(in srgb, var(--accent) 70%, transparent);
   position: fixed;
   right: 16px;
-  bottom: 56px;
-  width: min(320px, calc(100vw - 32px));
+  bottom: 50px;
+  width: min(42ch, calc(100vw - 32px));
   max-height: calc(100vh - 80px);
-  overflow-y: auto;
-  padding: 16px;
+  padding: 22px 2ch 18px;
   background: color-mix(in srgb, var(--bg) 94%, transparent);
-  border: 1px solid var(--accent);
-  border-radius: 4px;
+  border: 1px solid var(--line);
   font-size: 13px;
+  line-height: 1.5;
 }
 
+/* The + at each corner, centred on where the lines meet. */
+#settings-panel::before,
+#settings-panel::after,
+#settings-form::before,
+#settings-form::after {
+  content: "+";
+  position: absolute;
+  width: 1ch;
+  line-height: 1;
+  text-align: center;
+  color: var(--accent);
+  background: var(--bg);
+}
+#settings-panel::before { top: -0.5em; left: -0.5ch; }
+#settings-panel::after { top: -0.5em; right: -0.5ch; }
+#settings-form::before { bottom: -0.5em; left: -0.5ch; }
+#settings-form::after { bottom: -0.5em; right: -0.5ch; }
+
+/* The title, set into the top line. */
 #settings-panel h2 {
-  margin: 0 0 12px;
+  position: absolute;
+  top: -0.75em;
+  left: 2ch;
+  margin: 0;
+  padding: 0 0.5ch;
   font-size: 13px;
   font-weight: normal;
+  line-height: 1.5;
   color: var(--accent);
+  background: var(--bg);
 }
-
-#settings-panel h2::before { content: "// "; }
+#settings-panel h2::before { content: "[ "; }
+#settings-panel h2::after { content: " ]"; }
 
 #settings-form {
   display: grid;
-  gap: 12px;
+  gap: 4px;
+  max-height: calc(100vh - 130px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
+/* Every row: a > in the margin while you're on it, the name, then the control. */
 #settings-form label {
+  position: relative;
   display: grid;
-  gap: 6px;
-}
-
-#settings-form label.check {
-  display: flex;
+  grid-template-columns: 11ch 1fr;
   align-items: center;
-  gap: 8px;
+  padding-left: 2ch;
   cursor: pointer;
+}
+#settings-form label:hover,
+#settings-form label:focus-within { color: #fff; }
+#settings-form label:focus-within::before,
+#settings-form label:hover::before {
+  content: ">";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
 }
 
 #settings-form output {
   color: var(--accent);
+  text-align: right;
 }
 
-#settings-form select,
+/* Sliders: the bar of characters, with the real slider see-through on top. */
+#settings-form label:has(.bar) { grid-template-columns: 11ch auto 1fr; }
+#settings-form .bar {
+  position: relative;
+  order: 1;
+  color: var(--accent);
+  white-space: pre;
+}
+#settings-form .bar::before { content: attr(data-text); }
+#settings-form .bar input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+}
+#settings-form output { order: 2; }
+
+/* The theme list: < name >, with the arrows as buttons. */
+#settings-form .pick {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+}
+#settings-form .pick button {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+#settings-form .pick button:hover,
+#settings-form .pick button:focus-visible { color: #fff; outline: none; }
+#settings-form select {
+  appearance: none;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  text-transform: lowercase;
+  field-sizing: content; /* only as wide as the name shown, so the > sits right after it */
+  cursor: pointer;
+}
+#settings-form select:focus-visible { outline: none; text-decoration: underline; }
+#settings-form select option { background: var(--bg); color: var(--text); }
+
+/* The name: a line to type on. */
 #settings-form input[type="text"] {
   width: 100%;
-  padding: 6px 8px;
-  background: var(--bg);
+  padding: 0;
+  background: none;
+  border: none;
+  border-bottom: 1px dashed var(--line);
+  border-radius: 0;
+  outline: none;
   color: var(--text);
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  border-radius: 3px;
-  font: 13px var(--font);
+  caret-color: var(--accent);
+  font: inherit;
 }
+#settings-form input[type="text"]::placeholder { color: color-mix(in srgb, var(--text) 40%, transparent); }
 
-#settings-form input[type="range"],
-#settings-form input[type="checkbox"] {
-  accent-color: var(--accent);
+/* Checkboxes: [x] or [ ]. The real checkbox is hidden; clicking the row still ticks it. */
+#settings-form label.check {
+  display: flex;
+  gap: 1ch;
 }
+#settings-form label.check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+#settings-form .box { color: var(--accent); white-space: pre; }
+#settings-form .box::before { content: "[ ]"; }
+#settings-form input:checked + .box::before { content: "[x]"; }
 
-#settings-form input[type="range"] { width: 100%; }
+/* A dashed rule between the sliders and the checkboxes. */
+#settings-form label.check:not([hidden]) ~ label.check { margin-top: 0; }
+#settings-form .rule {
+  margin: 6px 0;
+  color: var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+}
+#settings-form .rule::before { content: "- - - - - - - - - - - - - - - - - - - - - - - - - -"; }
