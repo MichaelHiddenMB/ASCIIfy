@@ -1,0 +1,186 @@
+/* Colors for the clock, search bar and settings, matched to the koi pond's water and gold koi. */
+:root {
+  --bg: #050e14;
+  --text: #eef3f6;
+  --accent: #eeb640;
+  --font: Menlo, Monaco, Consolas, "DejaVu Sans Mono", "Courier New", monospace;
+  /* A soft halo in the background color keeps text readable over the busy scene. */
+  --halo: 0 0 2px var(--bg), 0 0 6px var(--bg), 0 0 12px var(--bg), 0 0 18px var(--bg);
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  display: block;
+  cursor: pointer; /* clicking the water drops food for the koi */
+}
+
+/* ---------- clock + search ---------- */
+
+/* The clock and search bar sit in the middle of the screen (a little above center, which
+   looks more balanced to the eye than dead center). */
+#overlay {
+  position: fixed;
+  inset: 0;
+  padding: 0 16px 8vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  pointer-events: none; /* let the mouse "pass through" to the scene, except on the search bar */
+}
+
+#clock {
+  text-align: center;
+  text-shadow: var(--halo);
+}
+
+#clock-time {
+  margin: 0;
+  font-family: var(--font);
+  font-size: clamp(10px, 1.9vw, 20px);
+  line-height: 1;
+  color: var(--text);
+  /* The halo would draw dark seams between the block characters, so the digits get a
+     soft glow behind the whole shape instead. */
+  text-shadow: none;
+  filter: drop-shadow(0 0 10px var(--bg)) drop-shadow(0 0 4px var(--bg));
+}
+
+/* The greeting is the main line under the clock; the date is a quieter caption below it.
+   Using size and brightness (not two competing colors) makes the order obvious. */
+#greeting {
+  margin: 18px 0 0;
+  font-size: 19px;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--text) 92%, transparent);
+}
+
+#clock-date {
+  margin: 8px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text) 55%, transparent);
+}
+
+#search {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(560px, 100%);
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 4px;
+}
+
+#search:focus-within { border-color: var(--accent); }
+
+#search-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font: 16px var(--font);
+}
+
+#search-input::placeholder { color: color-mix(in srgb, var(--text) 45%, transparent); }
+
+/* ---------- settings ---------- */
+
+#settings-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 14px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 4px;
+  color: var(--accent);
+  font: 13px var(--font);
+  cursor: pointer;
+  opacity: 0.65;
+}
+
+#settings-toggle:hover,
+#settings-toggle:focus-visible,
+#settings-toggle[aria-expanded="true"] { opacity: 1; }
+
+#settings-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 56px;
+  width: min(320px, calc(100vw - 32px));
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+#settings-panel h2 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--accent);
+}
+
+#settings-panel h2::before { content: "// "; }
+
+#settings-form {
+  display: grid;
+  gap: 12px;
+}
+
+#settings-form label {
+  display: grid;
+  gap: 6px;
+}
+
+#settings-form label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+#settings-form output {
+  color: var(--accent);
+}
+
+#settings-form select,
+#settings-form input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 3px;
+  font: 13px var(--font);
+}
+
+#settings-form input[type="range"],
+#settings-form input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+#settings-form input[type="range"] { width: 100%; }

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New Tab</title>
+  <link rel="stylesheet" href="newtab.css">
+  <!-- type="module" lets our JavaScript files import each other without a build step. -->
+  <script type="module" src="src/main.js"></script>
+</head>
+<body>
+  <!-- The animated scene is painted onto this canvas, which sits behind everything else. -->
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <!-- Normal page elements layered on top of the canvas. -->
+  <main id="overlay">
+    <section id="clock">
+      <pre id="clock-time"></pre>
+      <p id="greeting"></p>
+      <p id="clock-date"></p>
+    </section>
+
+    <form id="search" role="search" autocomplete="off">
+      <input id="search-input" type="text" name="q" placeholder="search the web" aria-label="Search the web" autofocus>
+    </form>
+  </main>
+
+  <button id="settings-toggle" type="button" aria-controls="settings-panel" aria-expanded="false">[ settings ]</button>
+
+  <aside id="settings-panel" hidden>
+    <h2>settings</h2>
+    <form id="settings-form">
+      <label>scene
+        <select name="scene"></select>
+      </label>
+      <label>speed <output data-for="speed"></output>
+        <input type="range" name="speed" min="0.25" max="2" step="0.25">
+      </label>
+      <label>animals <output data-for="density"></output>
+        <input type="range" name="density" min="0" max="3" step="0.25">
+      </label>
+      <label>lily pads <output data-for="pads"></output>
+        <input type="range" name="pads" min="0" max="3" step="0.25">
+      </label>
+      <label>your name
+        <input type="text" name="name" maxlength="40" placeholder="for the greeting">
+      </label>
+      <label class="check"><input type="checkbox" name="showClock"> show clock</label>
+      <label class="check"><input type="checkbox" name="clock24"> 24-hour clock</label>
+      <label class="check"><input type="checkbox" name="showSearch"> show search bar</label>
+      <label class="check"><input type="checkbox" name="light"> moonlight on the water</label>
+    </form>
+  </aside>
+</body>
+</html>
